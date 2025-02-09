@@ -1,10 +1,10 @@
 <script setup>
-
+import InputPage from '@/components/InputPage.vue'
 </script>
 
 <template>
 	<div class="container">
-		<h1>Welcomeeeeeeeeeeeeeeeeeeee</h1>
+		<InputPage />
 	</div>
 </template>
 

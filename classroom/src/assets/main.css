@@ -1,0 +1,9 @@
+html, body, #app {
+	margin: 0;
+	padding: 0;
+	height: 100%;
+}
+
+#app {
+	background: linear-gradient(135deg, #f5f7fa, #576e94);
+}
