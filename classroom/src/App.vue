@@ -1,10 +1,10 @@
 <script setup>
-import InputPage from '@/components/InputPage.vue'
+import { RouterView } from 'vue-router';
 </script>
 
 <template>
 	<div class="container">
-		<InputPage />
+		<router-view></router-view>
 	</div>
 </template>
 

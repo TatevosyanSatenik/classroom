@@ -1,5 +1,11 @@
 <script setup>
 import { ref } from 'vue';
+import { useRouter } from 'vue-router';
+import { loginUser } from '@/utils';
+
+const router = useRouter();
+
+let user;
 
 const nameModel = defineModel('name', {
 	type: String,
@@ -13,15 +19,42 @@ const passModel = defineModel('pass', {
 
 const isPassVisible = ref(false);
 
-const checkMail = () => {
-	if (nameModel.value.includes('prof')) {
-		isPassVisible.value = true;
-		return;
-	}
+const loginStudent = async () => {
+	try {
+		const res = await fetch('http://localhost:3000/user/', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify({ email: nameModel.value })
+		});
 
-	isPassVisible.value = false;
+		if (!res.ok) {
+			throw new Error(`HTTP error! status: ${res.status}`);
+		}
+
+		const data = await res.json();
+
+		if (data.role === 'professor') {
+			isPassVisible.value = true;
+			user = data;
+		} else {
+			loginUser(data, router);
+		}
+
+		console.log(data);
+	} catch (err) {
+		console.error('Login error:', err);
+	}
 }
 
+const loginProfessor = async () => {
+	if (passModel.value === user.password) {
+		loginUser(user, router);
+	} else {
+		console.log('Invalid password');
+	}
+}
 </script>
 
 <template>
@@ -31,12 +64,15 @@ const checkMail = () => {
 		</div>
 
 		<div class="input-container">
-			<input v-debounce:500ms="checkMail" type="text" v-model="nameModel" 
-				placeholder="Email" />
+			<input type="text" v-model="nameModel" placeholder="Email" name="email" />
+
 			<Transition name="fade" appear>
-				<input v-if="isPassVisible" type="password" v-model="passModel"
-					placeholder="Password" />
+				<input v-if="isPassVisible" type="password" v-model="passModel" placeholder="Password" />
 			</Transition>
+
+			<div class="login-button" @click="isPassVisible ? loginProfessor() : loginStudent()">
+				<span>{{ isPassVisible ? 'Login' : 'Enter' }}</span>
+			</div>
 		</div>
 	</div>
 </template>
@@ -65,6 +101,15 @@ const checkMail = () => {
 	align-items: center;
 
 	gap: 20px;
+}
+
+.login-button {
+	padding: 10px 20px;
+	cursor: pointer;
+
+	border-radius: 32px;
+	box-shadow: 0 0 10px rgba(34, 93, 202, 0.91);
+	background-color: #225dca;
 }
 
 input {
