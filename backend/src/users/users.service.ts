@@ -30,6 +30,10 @@ const mockUsers = [
 export class UsersService {
 	// constructor(@InjectModel(User.name) private userModel: Model<User>) {}
 
+	async getStudents() {
+		return mockUsers.filter((user) => user.role === 'student');
+	}
+
 	async findByEmail(email: string) {
 		return mockUsers.find((user) => user.email === email);
 		// return this.userModel.findOne({ email });

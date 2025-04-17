@@ -75,7 +75,8 @@ onUnmounted(() => {
 
 <template>
   <div class="question-list">
-    <h2>Questions</h2>
+    <h2>Հարցում</h2>
+	<h3>Առարկա՝ Ծրագրավորման համակարգեր</h3>
     
     <div v-if="loading" class="loading">
       Loading questions...
@@ -92,7 +93,19 @@ onUnmounted(() => {
     <div v-else class="questions">
       <div v-for="question in questions" :key="question.id" class="question-card">
         <h3>{{ question.content }}</h3>
-        <p class="question-type">Type: {{ question.type }}</p>
+		<div class="radio-group">
+			<input type="radio" id="html" name="fav_language" value="HTML">
+			<label for="html">Օգտագործելով abstract կլասեր և interface-ներ</label><br>
+			<input type="radio" id="css" name="fav_language" value="CSS">
+			<label for="css">Օգտագործելով միայն sealed կլասեր
+			</label><br>
+			<input type="radio" id="javascript" name="fav_language" value="JavaScript">
+			<label for="javascript">Օգտագործելով միայն ստատիկ մեթոդներ</label><br>
+			<input type="radio" id="javascript" name="fav_language" value="JavaScript">
+			<label for="javascript">Բոլոր տարբերակներն էլ ճիշտ են</label>
+		</div>
+        <!-- <p class="question-type">Type: {{ question.type }}</p> -->
+		 
         <div v-if="question.type === 'quiz'" class="quiz-info">
           <p>Correct Answer ID: {{ question.correctAnswerId }}</p>
           <div v-if="question.answers" class="answers">
@@ -114,7 +127,7 @@ onUnmounted(() => {
 }
 
 h2 {
-  color: #225dca;
+  color: #051f4f;
   margin-bottom: 20px;
 }
 

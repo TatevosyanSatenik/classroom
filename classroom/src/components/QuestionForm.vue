@@ -24,23 +24,39 @@ const handleSubmit = () => {
 
 <template>
   <div class="question-form">
-    <h2>Add New Question</h2>
-    <form @submit.prevent="handleSubmit">
-      <div class="form-group">
-        <label for="content">Question Content:</label>
-        <textarea
-          id="content"
-          v-model="questionContent"
-          required
-          placeholder="Enter your question..."
-        ></textarea>
+
+    <h2>Ավելացնել  հարցեր</h2>
+
+	<div class="form-group">
+        <label for="type">Առարկա:</label>
+        <select id="type" v-model="questionType" required>
+          <option value="text">Ծրագրավորման ոճեր և մեթոդներ</option>
+          <option value="text">Ալգորիթմների տեսություն</option>
+          <option value="text">Որոնման տեղեկատվական համակարգեր</option>
+          <option value="text">Ծրագրավորման տեխնոլոգիա</option>
+          <option value="text">Օպերացիոն համակարգեր</option>
+          <option value="text">Ինֆորմատիկա</option>
+
+			
+		</select>
       </div>
 
-      <div class="form-group">
-        <label for="type">Question Type:</label>
+	  <div class="form-group">
+        <label for="type">Խումբ:</label>
         <select id="type" v-model="questionType" required>
-          <option value="text">Text</option>
-          <option value="quiz">Quiz</option>
+          <option value="text">ՄՏՏ 319</option>
+          <option value="text">ՄՏՏ 355</option>
+          <option value="text">ՄՏՏ 320</option>
+          <option value="text">ՄՏՏ 350</option>
+
+			
+		</select>
+      </div>
+	  <div class="form-group">
+        <label for="type">Հարցի տիպը:</label>
+        <select id="type" v-model="questionType" required>
+          <option value="text">Տեքստային</option>
+          <option value="quiz">Թեստային</option>
         </select>
       </div>
 
@@ -54,23 +70,40 @@ const handleSubmit = () => {
         />
       </div>
 
-      <button type="submit" class="submit-btn">Add Question</button>
+    <form @submit.prevent="handleSubmit">
+      <div class="form-group">
+        <label for="content">Հարցերի պատուհան:</label>
+        <textarea
+          id="content"
+          v-model="questionContent"
+          required
+          placeholder="Մուտքագրել հարցը..."
+        ></textarea>
+      </div>
+
+
+      <button type="submit" class="submit-btn">Ավելացնել</button>
     </form>
+
   </div>
+
 </template>
 
 <style scoped>
 .question-form {
   width: 100%;
-  max-width: 600px;
+  max-width: 500px;
   padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   background: white;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 h2 {
-  color: #225dca;
+  color: #09317b;
   margin-bottom: 20px;
 }
 

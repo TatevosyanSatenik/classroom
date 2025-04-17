@@ -88,7 +88,7 @@ onUnmounted(() => {
 
 <template>
   <div class="professor-question-list">
-    <h2>Your Questions</h2>
+    <h2>Հարցեր</h2>
     
     <div v-if="loading" class="loading">
       Loading questions...
@@ -104,11 +104,8 @@ onUnmounted(() => {
     
     <div v-else class="questions">
       <div v-for="question in questions" :key="question.id" class="question-card">
-        <div class="question-header">
-          <h3>{{ question.content }}</h3>
-          <button class="delete-btn" @click="handleDelete(question.id)">Delete</button>
-        </div>
-        <p class="question-type">Type: {{ question.type }}</p>
+        
+        <!-- <p class="question-type">Type: {{ question.type }}</p> -->
         <div v-if="question.type === 'quiz'" class="quiz-info">
           <p>Correct Answer ID: {{ question.correctAnswerId }}</p>
           <div v-if="question.answers" class="answers">
@@ -117,20 +114,48 @@ onUnmounted(() => {
             </p>
           </div>
         </div>
+		<div class="question-header">
+          <h3 >{{ question.content }}</h3>
+		  <div class="radio-group">
+
+			<input type="radio" id="html" name="fav_language" value="HTML">
+			<label for="html">Օգտագործելով abstract կլասեր և interface-ներ</label><br>
+			<input type="radio" id="css" name="fav_language" value="CSS">
+			<label for="css">Օգտագործելով միայն sealed կլասեր
+			</label><br>
+			<input type="radio" id="javascript" name="fav_language" value="JavaScript">
+			<label for="javascript">Օգտագործելով միայն ստատիկ մեթոդներ</label><br>
+			<input type="radio" id="javascript" name="fav_language" value="JavaScript">
+			<label for="javascript">Բոլոր տարբերակներն էլ ճիշտ են</label>
+		  </div>
+		  <div class="buttons">
+			<button class="delete-btn" @click="handleDelete(question.id)">Ջնջել</button>
+			<button class="edit-btn" @click="handleDelete(question.id)">Խմբագրել</button>
+		  </div>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
+.radio-group label{
+	padding: 5px;
+}
+h3{
+	padding: 10px;
+}
+.buttons{
+	padding-top: 15px;
+}
 .professor-question-list {
   width: 100%;
-  max-width: 800px;
+  max-width: 600px;
   padding: 20px;
 }
 
 h2 {
-  color: #225dca;
+  color: #09317b;
   margin-bottom: 20px;
 }
 
@@ -159,10 +184,10 @@ h2 {
 }
 
 .question-header {
-  display: flex;
+  /* display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 10px;
+  margin-bottom: 10px; */
 }
 
 h3 {
@@ -175,13 +200,23 @@ h3 {
   background-color: #dc3545;
   color: white;
   padding: 5px 10px;
+  margin-right: 5px;
   border: none;
   border-radius: 4px;
   cursor: pointer;
   font-size: 14px;
   transition: background-color 0.3s;
 }
-
+.edit-btn {
+  background-color: #0c851c;
+  color: white;
+  padding: 5px 10px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.3s;
+}
 .delete-btn:hover {
   background-color: #c82333;
 }
