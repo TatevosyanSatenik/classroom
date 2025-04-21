@@ -1,42 +1,88 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import QuestionForm from './QuestionForm.vue';
 import ProfessorQuestionList from './ProfessorQuestionList.vue';
-import Tree from 'vue3-tree';
-import 'vue3-tree/dist/style.css';
+import YearGroupTree from './YearGroupTree.vue';
+import { io } from 'socket.io-client';
+import { getUser } from '../utils';
+
+const user = getUser();
+const userEmail = user?.email;
 
 const showForm = ref(false);
-const selectedGroup = ref(null);
-const searchText = ref('');
+const selectedGroups = ref([]);
+const selectedClass = ref(null);
+const classes = ref([]);
+const allYears = ref([]);
+const years = ref([]);
+const socket = ref(null);
+const newAnswers = ref([]);
 
-const treeData = ref([
-  {
-    id: 'year1',
-    label: 'Year 1',
-    nodes: [
-      { id: 'group1', label: 'Group 1' },
-      { id: 'group2', label: 'Group 2' },
-      { id: 'group3', label: 'Group 3' }
-    ]
-  },
-]);
-
-const handleNodeSelect = (node) => {
-  if (!node.children) { // Only select leaf nodes (groups)
-    selectedGroup.value = node.id;
+const fetchClasses = async () => {
+  try {
+    const response = await fetch('http://localhost:3000/classes');
+    classes.value = await response.json();
+  } catch (error) {
+    console.error('Error fetching classes:', error);
   }
 };
 
+const fetchYears = async () => {
+  try {
+    const response = await fetch('http://localhost:3000/years');
+    allYears.value = await response.json();
+    years.value = allYears.value;
+  } catch (error) {
+    console.error('Error fetching years:', error);
+  }
+};
+
+const fetchExistingAnswers = async () => {
+  try {
+    const response = await fetch('http://localhost:3000/answers');
+    const existingAnswers = await response.json();
+    newAnswers.value = existingAnswers;
+  } catch (error) {
+    console.error('Error fetching existing answers:', error);
+  }
+};
+
+const handleClassSelect = async (classId) => {
+
+  return ;
+
+  selectedClass.value = classId;
+
+  try {
+    const response = await fetch(`http://localhost:3000/years/class/${classId}/groups`);
+    const groups = await response.json();
+    // Update the years data to only show groups for the selected class
+    years.value = allYears.value.map(year => ({
+      ...year,
+      groups: year.groups.filter(group =>
+        groups.some(g => g.id === group.id)
+      )
+    }));
+  } catch (error) {
+    console.error('Error fetching class groups:', error);
+  }
+};
+
+const handleGroupsSelect = (groups) => {
+  selectedGroups.value = groups;
+};
+
 const handleQuestionSubmit = async (question) => {
-  if (!selectedGroup.value) {
-    alert('Please select a group first');
+  if (selectedGroups.value.length === 0) {
+    alert('Please select at least one group');
     return;
   }
 
   try {
-    const questionWithGroup = {
+    const questionWithGroups = {
       ...question,
-      groupId: selectedGroup.value,
+      groupIds: selectedGroups.value,
+      classId: selectedClass.value
     };
 
     const response = await fetch('http://localhost:3000/questions', {
@@ -44,7 +90,7 @@ const handleQuestionSubmit = async (question) => {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(questionWithGroup),
+      body: JSON.stringify(questionWithGroups),
     });
 
     if (!response.ok) {
@@ -57,6 +103,40 @@ const handleQuestionSubmit = async (question) => {
     console.error('Error adding question:', error);
   }
 };
+
+onMounted(() => {
+  fetchClasses();
+  fetchYears();
+  fetchExistingAnswers();
+  
+  // Connect to WebSocket server with namespace
+  socket.value = io('http://localhost:3000/answers', {
+    withCredentials: true
+  });
+
+  socket.value.on('connect', () => {
+    console.log('WebSocket connected');
+    // Register as professor
+    socket.value.emit('professor-connect', userEmail);
+  });
+
+  socket.value.on('connect_error', (error) => {
+    console.error('WebSocket connection error:', error);
+  });
+
+  // Listen for new answers
+  socket.value.on('new-answer', (answer) => {
+    console.log('Received new answer:', answer);
+    // Create a new array instead of pushing to the existing one
+    newAnswers.value = [...newAnswers.value, answer];
+  });
+});
+
+onUnmounted(() => {
+  if (socket.value) {
+    socket.value.disconnect();
+  }
+});
 </script>
 
 <template>
@@ -69,18 +149,27 @@ const handleQuestionSubmit = async (question) => {
         </button>
       </div>
 
+      <div class="class-selector">
+        <h2>Select Class</h2>
+        <select v-model="selectedClass" @change="handleClassSelect(selectedClass)">
+          <option value="">Select a class</option>
+          <option v-for="classItem in classes" :key="classItem.id" :value="classItem.id">
+            {{ classItem.name }}
+          </option>
+        </select>
+      </div>
+
       <div class="layout">
         <div class="tree-container">
           <h2>Years and Groups</h2>
-          <Tree
-            :nodes="treeData"
-            :search-text="searchText"
-            :use-checkbox="true"
-            :use-icon="false"
-            show-child-count
-          />
-          <div v-if="selectedGroup" class="selected-group">
-            Selected Group: {{ selectedGroup }}
+          <YearGroupTree :years="years" @select-groups="handleGroupsSelect" />
+          <div v-if="selectedGroups.length > 0" class="selected-groups">
+            <h3>Selected Groups:</h3>
+            <ul>
+              <li v-for="groupId in selectedGroups" :key="groupId">
+                {{years.flatMap(y => y.groups).find(g => g.id === groupId)?.name}}
+              </li>
+            </ul>
           </div>
         </div>
 
@@ -89,7 +178,29 @@ const handleQuestionSubmit = async (question) => {
             <QuestionForm @submit="handleQuestionSubmit" />
           </div>
           <div class="questions-container">
-            <ProfessorQuestionList :groupId="selectedGroup" />
+            <ProfessorQuestionList :groupIds="selectedGroups" :classId="selectedClass" />
+          </div>
+        </div>
+      </div>
+
+      <div class="new-answers-section" v-if="newAnswers.length > 0">
+        <h3>New Answers</h3>
+        <div v-for="answer in newAnswers" :key="answer.timestamp" class="answer-card">
+          <div class="answer-header">
+            <span class="student-email">{{ answer.email }}</span>
+            <span class="answer-time">{{ new Date(answer.timestamp).toLocaleTimeString() }}</span>
+          </div>
+          <div class="answer-content">
+            <template v-if="answer.answer.type === 'quiz'">
+              <p>Selected answer: {{ answer.answer.answerId }}</p>
+              <p :class="{ 'correct': answer.answer.isCorrect, 'incorrect': !answer.answer.isCorrect }">
+                {{ answer.answer.isCorrect ? 'Correct' : 'Incorrect' }}
+              </p>
+            </template>
+            <template v-else>
+              <p>Text answer:</p>
+              <p class="text-answer">{{ answer.answer.text }}</p>
+            </template>
           </div>
         </div>
       </div>
@@ -144,7 +255,7 @@ h1 {
   background: white;
   padding: 20px;
   border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .tree-container h2 {
@@ -153,11 +264,27 @@ h1 {
   margin-bottom: 20px;
 }
 
-.selected-group {
+.selected-groups {
   margin-top: 20px;
   padding: 10px;
   background: #f0f7ff;
   border-radius: 4px;
+}
+
+.selected-groups h3 {
+  color: #225dca;
+  margin: 0 0 8px 0;
+  font-size: 14px;
+}
+
+.selected-groups ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.selected-groups li {
+  padding: 4px 0;
   color: #225dca;
 }
 
@@ -170,12 +297,74 @@ h1 {
   background: white;
   padding: 20px;
   border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .questions-container {
   background: white;
   border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
-</style> 
+
+.class-selector {
+  margin-bottom: 20px;
+}
+
+.class-selector select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 16px;
+  background-color: white;
+}
+
+.class-selector h2 {
+  color: #225dca;
+  margin-bottom: 10px;
+}
+
+.new-answers-section {
+  margin-top: 2rem;
+  padding: 1rem;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+}
+
+.answer-card {
+  background-color: white;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.answer-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.answer-content {
+  margin-top: 0.5rem;
+}
+
+.correct {
+  color: #28a745;
+  font-weight: bold;
+}
+
+.incorrect {
+  color: #dc3545;
+  font-weight: bold;
+}
+
+.text-answer {
+  background-color: #f8f9fa;
+  padding: 0.5rem;
+  border-radius: 4px;
+  margin-top: 0.5rem;
+}
+</style>

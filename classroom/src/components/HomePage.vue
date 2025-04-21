@@ -1,12 +1,13 @@
 <script setup>
 import { onMounted, ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
-import QuestionList from './QuestionList.vue';
+import StudentQuestionList from './StudentQuestionList.vue';
 import ProfessorPage from './ProfessorPage.vue';
-
+import { getUser } from '../utils';
 const router = useRouter();
 const userEmail = ref('');
 const userRole = ref('');
+const userGroupId = ref('');
 
 const isProfessor = computed(() => userRole.value === 'professor');
 
@@ -16,17 +17,14 @@ const handleLogout = () => {
 };
 
 onMounted(() => {
-	console.log('HomePage mounted');
 	try {
-		const userStr = localStorage.getItem('user');
-		console.log('Raw user data:', userStr);
-		if (userStr) {
-			const user = JSON.parse(userStr);
+		const user = getUser();
+		if (user) {
 			console.log('Parsed user:', user);
 			userEmail.value = user.email;
 			userRole.value = user.role;
+			userGroupId.value = user.groupId;
 
-			console.log(userEmail.value, userRole.value);
 		} else {
 			console.log('No user found in localStorage');
 			router.push('/');
@@ -54,7 +52,7 @@ onMounted(() => {
 
 		<div class="content">
 			<ProfessorPage v-if="isProfessor" />
-			<QuestionList v-else />
+			<StudentQuestionList v-else :groupId="userGroupId" :email="userEmail" />
 		</div>
 	</div>
 </template>
