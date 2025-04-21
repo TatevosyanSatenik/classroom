@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Put, Delete, HttpException, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query, Put, Delete, HttpException, HttpStatus } from '@nestjs/common';
 import { QuestionsService } from './questions.service';
 import { Question } from '../schemas/question.schema';
 
@@ -16,9 +16,9 @@ export class QuestionsController {
   }
 
   @Get()
-	findAll() {
+	findAll(@Query('groupIds') groupIds: string, @Query('classId') classId: string) {
     try {
-      return this.questionsService.findAll();
+      return this.questionsService.findAll(groupIds, classId);
     } catch (error) {
       throw new HttpException('Failed to fetch questions', HttpStatus.INTERNAL_SERVER_ERROR);
     }

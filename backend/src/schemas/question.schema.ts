@@ -14,6 +14,8 @@ export interface Question {
 		id: string;
 		content: string;
 	}>;
+	classId: string;
+	groupIds: string[];
 	correctAnswerId?: string;
 }
 
