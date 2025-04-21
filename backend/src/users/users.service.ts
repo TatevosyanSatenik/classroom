@@ -1,7 +1,4 @@
 import { Injectable } from "@nestjs/common";
-import { InjectModel } from "@nestjs/mongoose";
-import { Model } from "mongoose";
-// import { User } from "src/schemas/user.schema";
 
 const mockUsers = [
 	{
@@ -9,7 +6,7 @@ const mockUsers = [
 		role: 'student',
 		answers: [],
 		year: 2,
-		group: 'A',
+		groupId: 'group1',
 	},
 	{
 		email: 'test2@test.com',
@@ -22,13 +19,17 @@ const mockUsers = [
 		role: 'student',
 		answers: [],
 		year: 2,
-		group: 'A',
+		groupId: 'group1',
 	}
 ];
 
 @Injectable()
 export class UsersService {
 	// constructor(@InjectModel(User.name) private userModel: Model<User>) {}
+
+	async getStudents() {
+		return mockUsers.filter((user) => user.role === 'student');
+	}
 
 	async findByEmail(email: string) {
 		return mockUsers.find((user) => user.email === email);

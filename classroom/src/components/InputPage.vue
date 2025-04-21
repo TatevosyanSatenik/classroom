@@ -59,19 +59,22 @@ const loginProfessor = async () => {
 
 <template>
 	<div class="input-page">
+		<div>
+			<img src="../../public/polytechnic.png" width="250" alt=" ">
+		</div>
 		<div class="input-header">
-			<span>Please enter your credentials</span>
+			<span>Մուտքագրեք ձեր էլեկտրոնային հասցեն </span>
 		</div>
 
 		<div class="input-container">
-			<input type="text" v-model="nameModel" placeholder="Email" name="email" />
+			<input type="text" v-model="nameModel" placeholder="name.surname@polytechnic.am" name="email" />
 
 			<Transition name="fade" appear>
 				<input v-if="isPassVisible" type="password" v-model="passModel" placeholder="Password" />
 			</Transition>
 
 			<div class="login-button" @click="isPassVisible ? loginProfessor() : loginStudent()">
-				<span>{{ isPassVisible ? 'Login' : 'Enter' }}</span>
+				<span>{{ isPassVisible ? 'Մ ու տ ք' : 'Մ ու տ ք' }}</span>
 			</div>
 		</div>
 	</div>
@@ -79,6 +82,7 @@ const loginProfessor = async () => {
 
 <style scoped>
 .input-page {
+	
 	width: 100%;
 	display: flex;
 	flex-direction: column;

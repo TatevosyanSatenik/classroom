@@ -16,3 +16,8 @@ export const loginUser = (user, router) => {
 		console.error('Error during login:', error);
 	}
 }
+
+export const getUser = () => {
+	const userStr = localStorage.getItem('user');
+	return userStr ? JSON.parse(userStr) : null;
+}

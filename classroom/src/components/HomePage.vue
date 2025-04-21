@@ -1,12 +1,13 @@
 <script setup>
 import { onMounted, ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
-import QuestionList from './QuestionList.vue';
+import StudentQuestionList from './StudentQuestionList.vue';
 import ProfessorPage from './ProfessorPage.vue';
-
+import { getUser } from '../utils';
 const router = useRouter();
 const userEmail = ref('');
 const userRole = ref('');
+const userGroupId = ref('');
 
 const isProfessor = computed(() => userRole.value === 'professor');
 
@@ -16,17 +17,14 @@ const handleLogout = () => {
 };
 
 onMounted(() => {
-	console.log('HomePage mounted');
 	try {
-		const userStr = localStorage.getItem('user');
-		console.log('Raw user data:', userStr);
-		if (userStr) {
-			const user = JSON.parse(userStr);
+		const user = getUser();
+		if (user) {
 			console.log('Parsed user:', user);
 			userEmail.value = user.email;
 			userRole.value = user.role;
+			userGroupId.value = user.groupId;
 
-			console.log(userEmail.value, userRole.value);
 		} else {
 			console.log('No user found in localStorage');
 			router.push('/');
@@ -41,17 +39,20 @@ onMounted(() => {
 <template>
 	<div class="home-page">
 		<div class="header">
-			<h1>Welcome to Classroom</h1>
-			<div class="user-info">
+			<h1>ՀԱՅԱՍՏԱՆԻ ԱԶԳԱՅԻՆ ՊՈԼԻՏԵԽՆԻԿԱԿԱՆ ՀԱՄԱԼՍԱՐԱՆ</h1>
+			<div class="logo">
+				<img src="../../public/polytechnic_logo.png" width="150" alt="">
+			</div>
+			<!-- <div class="user-info">
 				<p>Current user: {{ userEmail }}</p>
 				<p>Role: {{ userRole }}</p>
-			</div>
-			<button class="logout-btn" @click="handleLogout">Logout</button>
+			</div> -->
+			<!-- <button class="logout-btn" @click="handleLogout">Logout</button> -->
 		</div>
 
 		<div class="content">
 			<ProfessorPage v-if="isProfessor" />
-			<QuestionList v-else />
+			<StudentQuestionList v-else :groupId="userGroupId" :email="userEmail" />
 		</div>
 	</div>
 </template>
@@ -69,18 +70,26 @@ onMounted(() => {
 
 .header {
 	display: flex;
-	justify-content: space-between;
+	flex-direction: column;
 	align-items: center;
-	padding: 20px;
-	background-color: white;
+	padding: 50px;
+	gap: 20px;
+	background-color: rgb(6, 19, 44);
 	border-radius: 8px;
-	box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+	box-shadow: 0 2px 4px rgba(186, 147, 147, 0.1);
 }
-
+.logo{
+	padding-top: 10px;
+	/* display: flex;
+	justify-content: center;
+	align-items: center; */
+}
+	
 h1 {
 	font-size: 24px;
-	color: #225dca;
+	color: #cdd3de;
 	margin: 0;
+
 }
 
 .user-info {
