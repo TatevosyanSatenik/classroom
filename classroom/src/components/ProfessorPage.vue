@@ -11,19 +11,23 @@ const userEmail = user?.email;
 
 const showForm = ref(false);
 const selectedGroups = ref([]);
-const selectedClass = ref(null);
-const classes = ref([]);
 const allYears = ref([]);
 const years = ref([]);
 const socket = ref(null);
 const newAnswers = ref([]);
+const subjects = ref([]);
+const selectedSubject = ref(null);
+const selectedTopic = ref(null);
 
-const fetchClasses = async () => {
+const fetchSubjects = async () => {
   try {
-    const response = await fetch('http://localhost:3000/classes');
-    classes.value = await response.json();
+    const response = await fetch('http://localhost:3000/subjects');
+    subjects.value = await response.json();
+    if (subjects.value.length > 0) {
+      selectedSubject.value = subjects.value[0];
+    }
   } catch (error) {
-    console.error('Error fetching classes:', error);
+    console.error('Error fetching subjects:', error);
   }
 };
 
@@ -47,29 +51,9 @@ const fetchExistingAnswers = async () => {
   }
 };
 
-const handleClassSelect = async (classId) => {
-
-  return ;
-
-  selectedClass.value = classId;
-
-  try {
-    const response = await fetch(`http://localhost:3000/years/class/${classId}/groups`);
-    const groups = await response.json();
-    // Update the years data to only show groups for the selected class
-    years.value = allYears.value.map(year => ({
-      ...year,
-      groups: year.groups.filter(group =>
-        groups.some(g => g.id === group.id)
-      )
-    }));
-  } catch (error) {
-    console.error('Error fetching class groups:', error);
-  }
-};
-
 const handleGroupsSelect = (groups) => {
   selectedGroups.value = groups;
+  console.log(selectedTopic.value);
 };
 
 const handleQuestionSubmit = async (question) => {
@@ -78,11 +62,16 @@ const handleQuestionSubmit = async (question) => {
     return;
   }
 
+  if (!selectedTopic.value) {
+    alert('Please select a topic');
+    return;
+  }
+
   try {
     const questionWithGroups = {
       ...question,
       groupIds: selectedGroups.value,
-      classId: selectedClass.value
+      topicIds: [selectedTopic.value.id]
     };
 
     const response = await fetch('http://localhost:3000/questions', {
@@ -105,9 +94,9 @@ const handleQuestionSubmit = async (question) => {
 };
 
 onMounted(() => {
-  fetchClasses();
   fetchYears();
   fetchExistingAnswers();
+  fetchSubjects();
   
   // Connect to WebSocket server with namespace
   socket.value = io('http://localhost:3000/answers', {
@@ -149,14 +138,24 @@ onUnmounted(() => {
         </button>
       </div>
 
-      <div class="class-selector">
-        <h2>Select Class</h2>
-        <select v-model="selectedClass" @change="handleClassSelect(selectedClass)">
-          <option value="">Select a class</option>
-          <option v-for="classItem in classes" :key="classItem.id" :value="classItem.id">
-            {{ classItem.name }}
-          </option>
-        </select>
+      <div class="subject-topic-selector">
+        <div class="selector-group">
+          <h2>Select Subject</h2>
+          <select v-model="selectedSubject" @change="selectedTopic = null">
+            <option v-for="subject in subjects" :key="subject.id" :value="subject">
+              {{ subject.name }}
+            </option>
+          </select>
+        </div>
+
+        <div class="selector-group" v-if="selectedSubject">
+          <h2>Select Topic</h2>
+          <select v-model="selectedTopic">
+            <option v-for="topic in selectedSubject.topics" :key="topic.id" :value="topic">
+              {{ topic.name }}
+            </option>
+          </select>
+        </div>
       </div>
 
       <div class="layout">
@@ -178,7 +177,10 @@ onUnmounted(() => {
             <QuestionForm @submit="handleQuestionSubmit" />
           </div>
           <div class="questions-container">
-            <ProfessorQuestionList :groupIds="selectedGroups" :classId="selectedClass" />
+            <ProfessorQuestionList 
+              :groupIds="selectedGroups" 
+              :topicId="selectedTopic?.name" 
+            />
           </div>
         </div>
       </div>
@@ -366,5 +368,34 @@ h1 {
   padding: 0.5rem;
   border-radius: 4px;
   margin-top: 0.5rem;
+}
+
+.subject-topic-selector {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.selector-group {
+  background: white;
+  padding: 15px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.selector-group h2 {
+  color: #225dca;
+  margin: 0 0 10px 0;
+  font-size: 16px;
+}
+
+.selector-group select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 16px;
+  background-color: white;
 }
 </style>

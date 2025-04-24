@@ -1,14 +1,12 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import * as dotenv from 'dotenv';
 import { UsersModule } from './users/users.module';
 import { QuestionsModule } from './questions/questions.module';
 import { YearsModule } from './years/years.module';
 import { ClassesModule } from './classes/classes.module';
 import { AnswersModule } from './answers/answers.module';
-
-dotenv.config();
+import { SubjectsModule } from './subjects/subjects.module';
 
 @Module({
   imports: [
@@ -17,6 +15,7 @@ dotenv.config();
     YearsModule,
     ClassesModule,
     AnswersModule,
+    SubjectsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

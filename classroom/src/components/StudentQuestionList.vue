@@ -1,76 +1,47 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch } from 'vue';
-import { io } from 'socket.io-client';
+import { ref, onMounted, onUnmounted, nextTick } from 'vue';
+import { timerService } from '../services/timer.service';
+import QuestionOverlay from './QuestionOverlay.vue';
 
 const props = defineProps({
-  groupId: {
-    type: String,
+  groupIds: {
+    type: Array as () => string[],
     required: true
   },
-  classId: {
+  topicId: {
     type: String,
     default: null
-  },
-  email: {
-    type: String,
-    required: true
   }
 });
 
 const questions = ref([]);
 const loading = ref(true);
 const error = ref(null);
-const socket = ref(null);
-const selectedAnswers = ref({});
-const textAnswers = ref({});
+const selectedQuestion = ref(null);
+const showOverlay = ref(false);
+const timeUp = ref(false);
 
 const fetchQuestions = async () => {
-  if (!props.groupId) {
+
+  console.log(props.groupIds);
+
+  if (!props.groupIds.length) {
     questions.value = [];
     loading.value = false;
     return;
   }
 
   try {
-    let url = 'http://localhost:3000/questions';
     const queryParams = new URLSearchParams();
+    queryParams.append('groupIds', props.groupIds.join(','));
     
-    queryParams.append('groupId', props.groupId);
-    
-    if (props.classId) {
-      queryParams.append('classId', props.classId);
+    if (props.topicId) {
+      queryParams.append('topicId', props.topicId);
     }
 
-    const response = await fetch(`${url}?${queryParams.toString()}`);
+    const response = await fetch(`http://localhost:3000/questions?${queryParams.toString()}`);
     const fetchedQuestions = await response.json();
-
-    // Get previously answered questions for this student
-    const answersResponse = await fetch(`http://localhost:3000/answers/${props.email}`);
-    const studentAnswers = await answersResponse.json();
-
-	console.log(studentAnswers);
-    
-    // Mark questions as answered if they were previously answered
-    questions.value = fetchedQuestions.map(question => {
-      const wasAnswered = studentAnswers.some(answer => 
-        answer.answer.questionId === question.id
-      );
-      return {
-        ...question,
-        answered: wasAnswered
-      };
-    });
-
-	console.log(questions.value);
-    
-    // Initialize selected answers and text answers
-    questions.value.forEach(question => {
-      if (question.type === 'quiz') {
-        selectedAnswers.value[question.id] = '';
-      } else if (question.type === 'text') {
-        textAnswers.value[question.id] = '';
-      }
-    });
+    questions.value = fetchedQuestions;
   } catch (error) {
     console.error('Error fetching questions:', error);
     error.value = 'Failed to fetch questions';
@@ -79,125 +50,65 @@ const fetchQuestions = async () => {
   }
 };
 
-const handleAnswerSelect = (questionId: string, answerId: string) => {
-  selectedAnswers.value[questionId] = answerId;
+const handleQuestionClick = (question) => {
+  if (timeUp.value) return;
+  selectedQuestion.value = question;
+  showOverlay.value = true;
 };
 
-const handleTextAnswerChange = (questionId: string, event: Event) => {
-  const target = event.target as HTMLTextAreaElement;
-  textAnswers.value[questionId] = target.value;
-};
-
-const handleSubmit = async (questionId: string) => {
-  const question = questions.value.find(q => q.id === questionId);
-  if (!question) return;
-
+const handleAnswerSubmit = async (answer) => {
   try {
-    // Validate answer
-    if (question.type === 'quiz' && !selectedAnswers.value[questionId]) {
-      alert('Please select an answer');
-      return;
-    }
-    if (question.type === 'text' && !textAnswers.value[questionId]?.trim()) {
-      alert('Please enter your answer');
-      return;
-    }
 
-    // Submit answer through WebSocket
-    const answer = {
-      email: props.email,
-      groupId: props.groupId,
-      classId: props.classId,
-      answer: question.type === 'quiz' 
-        ? {
-            questionId: question.id,
-            answerId: selectedAnswers.value[questionId],
-            type: 'quiz',
-            isCorrect: question.answers.find(a => a.id === selectedAnswers.value[questionId])?.isCorrect || false
-          }
-        : {
-            questionId: question.id,
-            text: textAnswers.value[questionId],
-            type: 'text'
-          }
-    };
+    console.log(answer);
 
-    console.log('Emitting answer:', answer);
-    socket.value.emit('submit-answer', answer);
+    const response = await fetch('http://localhost:3000/answers', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        questionId: selectedQuestion.value.id,
+        answer,
+      }),
+    });
 
-    // Mark question as answered
-    question.answered = true;
-    
-    // Clear the answer for this question
-    if (question.type === 'quiz') {
-      selectedAnswers.value[questionId] = '';
-    } else {
-      textAnswers.value[questionId] = '';
+    if (!response.ok) {
+      throw new Error('Failed to submit answer');
     }
 
-    alert('Answer submitted successfully!');
+    // Remove the answered question from the list
+    questions.value = questions.value.filter(q => q.id !== selectedQuestion.value.id);
   } catch (error) {
     console.error('Error submitting answer:', error);
-    alert('Error submitting answer. Please try again.');
   }
 };
 
-const setupWebSocket = () => {
-  console.log('Setting up WebSocket connection...');
-  socket.value = io('http://localhost:3000/answers', {
-    withCredentials: true
-  });
-
-  socket.value.on('connect', () => {
-    console.log('WebSocket connected');
-  });
-
-  socket.value.on('disconnect', () => {
-    console.log('WebSocket disconnected');
-  });
-
-  socket.value.on('connect_error', (error) => {
-    console.error('WebSocket connection error:', error);
-  });
-
-  socket.value.on('questionCreated', (question) => {
-    console.log('Received questionCreated event:', question);
-    fetchQuestions();
-  });
-
-  socket.value.on('questionUpdated', (updatedQuestion) => {
-    console.log('Received questionUpdated event:', updatedQuestion);
-    const index = questions.value.findIndex(q => q.id === updatedQuestion.id);
-    if (index !== -1) {
-      questions.value[index] = updatedQuestion;
-    }
-  });
-
-  socket.value.on('questionDeleted', (questionId) => {
-    console.log('Received questionDeleted event:', questionId);
-    questions.value = questions.value.filter(q => q.id !== questionId);
-  });
+const handleTimeUp = () => {
+  timeUp.value = true;
+  // Hide all question contents
+  questions.value = questions.value.map(q => ({
+    ...q,
+    content: 'Time is up!',
+    answers: []
+  }));
 };
 
-watch([() => props.groupId, () => props.classId], () => {
+onMounted(async () => {
+  await nextTick();
   fetchQuestions();
-}, { immediate: true });
-
-onMounted(() => {
-  setupWebSocket();
+  timerService.start(handleTimeUp);
 });
 
 onUnmounted(() => {
-  if (socket.value) {
-    console.log('Disconnecting WebSocket...');
-    socket.value.disconnect();
-  }
+  timerService.cleanup();
 });
 </script>
 
 <template>
   <div class="student-question-list">
-    <h2>Հարցեր</h2>
+    <div class="timer">
+      Time left: {{ Math.floor(timerService.getTimeLeft() / 60) }}:{{ (timerService.getTimeLeft() % 60).toString().padStart(2, '0') }}
+    </div>
 
     <div v-if="loading" class="loading">
       Loading questions...
@@ -208,92 +119,56 @@ onUnmounted(() => {
     </div>
 
     <div v-else-if="questions.length === 0" class="no-questions">
-      No questions available for your group{{ classId ? ' and class' : '' }}.
+      No questions available.
     </div>
 
     <div v-else class="questions">
-      <div v-for="question in questions" :key="question.id" class="question-card">
-        <div class="question-header">
-          <h3>{{ question.content }}</h3>
-          <div class="question-type">
-            {{ '[ ' + question.type + ' ]' }}
-          </div>
-        </div>
-
+      <div 
+        v-for="question in questions" 
+        :key="question.id" 
+        class="question-card"
+        @click="handleQuestionClick(question)"
+      >
         <div class="question-content">
-          <div v-if="question.type === 'quiz'" class="radio-group">
-            <div v-for="answer in question.answers" :key="answer.id" class="answer-option">
-              <input
-                type="radio"
-                :id="answer.id"
-                :name="question.id"
-                :value="answer.id"
-                :disabled="question.answered"
-                v-model="selectedAnswers[question.id]"
-                @change="handleAnswerSelect(question.id, answer.id)"
-              >
-              <label :for="answer.id">{{ answer.content }}</label>
-            </div>
-          </div>
-
-          <div v-else-if="question.type === 'text'" class="text-answer">
-            <textarea
-              :id="'text-' + question.id"
-              v-model="textAnswers[question.id]"
-              :disabled="question.answered"
-              placeholder="Enter your answer here..."
-              rows="4"
-              @input="handleTextAnswerChange(question.id, $event)"
-            ></textarea>
-          </div>
+          Click to answer
         </div>
-
-        <div class="submit-section">
-          <button
-            class="submit-btn"
-            @click="handleSubmit(question.id)"
-            :disabled="question.answered || 
-              (question.type === 'quiz' && !selectedAnswers[question.id]) ||
-              (question.type === 'text' && !textAnswers[question.id]?.trim())"
-          >
-            {{ question.answered ? 'Answered' : 'Submit Answer' }}
-          </button>
+        <div class="question-type">
+          {{ '[ ' + question.type + ' ]' }}
         </div>
       </div>
     </div>
+
+    <QuestionOverlay
+      v-if="showOverlay"
+      :question="selectedQuestion"
+      @submit="handleAnswerSubmit"
+      @close="showOverlay = false"
+    />
   </div>
 </template>
 
 <style scoped>
 .student-question-list {
   width: 100%;
-  max-width: 800px;
-  margin: 0 auto;
   padding: 20px;
 }
 
-h2 {
-  color: #225dca;
-  margin-bottom: 20px;
-}
-
-.loading,
-.error,
-.no-questions {
-  text-align: center;
-  padding: 20px;
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.error {
-  color: #dc3545;
+.timer {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: #225dca;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 4px;
+  font-size: 18px;
+  font-weight: bold;
 }
 
 .questions {
   display: grid;
   gap: 20px;
+  margin-top: 60px;
 }
 
 .question-card {
@@ -301,19 +176,17 @@ h2 {
   padding: 20px;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: transform 0.2s;
 }
 
-.question-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
+.question-card:hover {
+  transform: translateY(-2px);
 }
 
-h3 {
-  color: #333;
-  margin: 0;
-  flex: 1;
+.question-content {
+  margin-bottom: 10px;
+  font-size: 16px;
 }
 
 .question-type {
@@ -321,71 +194,9 @@ h3 {
   font-size: 14px;
 }
 
-.answer-option {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
-  padding: 10px;
-  background: #f8f9fa;
-  border-radius: 4px;
-  transition: background-color 0.3s;
-}
-
-.answer-option:hover {
-  background: #e9ecef;
-}
-
-.answer-option input[type="radio"] {
-  width: auto;
-}
-
-.answer-option label {
-  flex: 1;
-  cursor: pointer;
-}
-
-.submit-section {
-  margin-top: 20px;
-  text-align: right;
-}
-
-.submit-btn {
-  background-color: #225dca;
-  color: white;
-  padding: 8px 16px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: background-color 0.3s;
-}
-
-.submit-btn:hover:not(:disabled) {
-  background-color: #1a4ba3;
-}
-
-.submit-btn:disabled {
-  background-color: #6c757d;
-  cursor: not-allowed;
-}
-
-.text-answer {
-  margin-top: 10px;
-}
-
-.text-answer textarea {
-  width: 100%;
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 16px;
-  resize: vertical;
-  min-height: 100px;
-}
-
-.text-answer textarea:disabled {
-  background-color: #f8f9fa;
-  cursor: not-allowed;
+.loading, .error, .no-questions {
+  text-align: center;
+  padding: 40px;
+  color: #666;
 }
 </style> 
