@@ -8,7 +8,7 @@ const props = defineProps({
     type: Array as () => string[],
     required: true
   },
-  classId: {
+  topicId: {
     type: String,
     default: null
   }
@@ -32,46 +32,23 @@ const fetchQuestions = async () => {
   try {
     const queryParams = new URLSearchParams();
     props.groupIds.forEach(groupId => {
-      queryParams.append('groupId', groupId);
+      queryParams.append('groupIds', groupId);
     });
     
-    if (props.classId) {
-      queryParams.append('classId', props.classId);
+    if (props.topicId) {
+      queryParams.append('topicId', props.topicId);
     }
-
-    console.log(queryParams.toString());
 
     const response = await fetch(`http://localhost:3000/questions?${queryParams.toString()}`);
     const fetchedQuestions = await response.json();
     questions.value = fetchedQuestions;
-    
-    // Fetch answers for these questions
-    await fetchAnswers();
+
   } catch (error) {
     console.error('Error fetching questions:', error);
     error.value = 'Failed to fetch questions';
   } finally {
     loading.value = false;
   }
-};
-
-const fetchAnswers = async () => {
-  try {
-    // Fetch answers for each group
-    const answersPromises = props.groupIds.map(groupId => 
-      fetch(`http://localhost:3000/answers/group/${groupId}`).then(res => res.json())
-    );
-    
-    const groupAnswers = await Promise.all(answersPromises);
-    // Flatten the array of arrays into a single array of answers
-    answers.value = groupAnswers.flat();
-  } catch (error) {
-    console.error('Error fetching answers:', error);
-  }
-};
-
-const getAnswersForQuestion = (questionId) => {
-  return answers.value.filter(answer => answer.answer.questionId === questionId);
 };
 
 const handleDelete = async (questionId: string) => {
@@ -139,7 +116,8 @@ const setupWebSocket = () => {
   });
 };
 
-watch([() => props.groupIds, () => props.classId], () => {
+watch([() => props.groupIds, () => props.topicId], () => {
+  console.log(props.groupIds, props.topicId);
   fetchQuestions();
 }, { immediate: true });
 
@@ -188,33 +166,6 @@ onUnmounted(() => {
           <div v-for="option in question.answers" :key="option.id" class="option">
             {{ option.content }}
             <span v-if="option.isCorrect" class="correct-indicator">✓</span>
-          </div>
-        </div>
-
-        <div class="answers-section">
-          <h4>Answers</h4>
-          <div v-if="getAnswersForQuestion(question.id).length === 0" class="no-answers">
-            No answers yet
-          </div>
-          <div v-else class="answers-list">
-            <div v-for="answer in getAnswersForQuestion(question.id)" :key="answer.timestamp" class="answer-item">
-              <div class="answer-header">
-                <span class="student-email">{{ answer.email }}</span>
-                <span class="answer-time">{{ new Date(answer.timestamp).toLocaleTimeString() }}</span>
-              </div>
-              <div class="answer-content">
-                <template v-if="answer.answer.type === 'quiz'">
-                  <p>Selected answer: {{ question.answers.find(a => a.id === answer.answer.answerId)?.content }}</p>
-                  <p :class="{ 'correct': answer.answer.isCorrect, 'incorrect': !answer.answer.isCorrect }">
-                    {{ answer.answer.isCorrect ? 'Correct' : 'Incorrect' }}
-                  </p>
-                </template>
-                <template v-else>
-                  <p>Text answer:</p>
-                  <p class="text-answer">{{ answer.answer.text }}</p>
-                </template>
-              </div>
-            </div>
           </div>
         </div>
       </div>

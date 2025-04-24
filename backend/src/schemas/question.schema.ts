@@ -6,29 +6,31 @@ export enum QuestionType {
   QUIZ = 'quiz',
 }
 
-export interface Question {
-	id: string;
-	content: string;
-	type: 'text' | 'quiz';
-	answers?: Array<{
-		id: string;
-		content: string;
-	}>;
-	classId: string;
-	groupIds: string[];
-	correctAnswerId?: string;
+@Schema({ timestamps: true })
+export class Question extends Document {
+  @Prop({ required: true })
+  content: string;
+
+  @Prop({ required: true, enum: QuestionType })
+  type: QuestionType;
+
+  @Prop({ type: [{ id: String, content: String }], default: [] })
+  answers: Array<{
+    id: string;
+    content: string;
+  }>;
+
+  @Prop({ required: true })
+  classId: string;
+
+  @Prop({ type: [String], default: [] })
+  groupIds: string[];
+
+  @Prop({ type: [String], default: [] })
+  topicIds: string[];
+
+  @Prop({ required: false })
+  correctAnswerId?: string;
 }
 
-// @Schema({ timestamps: true })
-// export class Question extends Document {
-//   @Prop({ required: true })
-//   content: string;
-
-//   @Prop({ required: true, enum: QuestionType })
-//   type: QuestionType;
-
-//   @Prop({ required: false })
-//   correctAnswerId?: string;
-// }
-
-// export const QuestionSchema = SchemaFactory.createForClass(Question); 
+export const QuestionSchema = SchemaFactory.createForClass(Question); 

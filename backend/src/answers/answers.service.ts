@@ -1,23 +1,19 @@
 import { Injectable } from '@nestjs/common';
+import { QuestionsService } from '../questions/questions.service';
 
 export interface QuizAnswer {
   questionId: string;
   answerId: string;
   type: 'quiz';
-  isCorrect: boolean;
-}
-
-export interface TextAnswer {
-  questionId: string;
-  text: string;
-  type: 'text';
+  tabChanged?: boolean;
 }
 
 export interface UserAnswer {
   email: string;
   groupId: string;
   classId: string;
-  answer: QuizAnswer | TextAnswer;
+  answer: QuizAnswer;
+  isCorrect: boolean;
   timestamp: number;
 }
 
@@ -25,7 +21,7 @@ const answers: UserAnswer[] = [];
 
 @Injectable()
 export class AnswersService {
-  constructor() {}
+  constructor(private readonly questionsService: QuestionsService) {}
 
   getAllAnswers() {
     return answers;
@@ -39,12 +35,25 @@ export class AnswersService {
     return answers.filter((answer) => answer.groupId === groupId);
   }
 
-  createAnswer(answer: Omit<UserAnswer, 'timestamp'>) {
+  createAnswer(answer: Omit<UserAnswer, 'timestamp' | 'isCorrect'>) {
+    const question = this.questionsService.findOne(answer.answer.questionId);
+    let isCorrect = false;
+
+    if (question) {
+      if (answer.answer.tabChanged) {
+        isCorrect = false;
+      } else {
+        isCorrect = answer.answer.answerId === question.correctAnswerId;
+      }
+    }
+
     const newAnswer: UserAnswer = {
       ...answer,
+      isCorrect,
       timestamp: Date.now()
     };
+    
     answers.push(newAnswer);
     return newAnswer;
   }
-} 
+}

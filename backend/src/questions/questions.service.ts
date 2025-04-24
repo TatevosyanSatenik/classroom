@@ -1,73 +1,85 @@
 import { Injectable } from '@nestjs/common';
 import { QuestionsGateway } from './questions.gateway';
-import { Question } from '../schemas/question.schema';
-
-const mockQuestions: Question[] = [
-	{
-		id: '1',
-		classId: 'cs101',
-		groupIds: ['group1', 'group2'],
-		content: 'Ինչպե՞ս կարող ենք ներդնել Strategy նախագծման օրինաչափությունը Java-ում:',
-		type: 'quiz',
-		answers: [
-			{ id: 'A', content: 'Օգտագործելով abstract կլասեր և interface-ներ' },
-			{ id: 'B', content: 'Օգտագործելով միայն sealed կլասեր' },
-			{ id: 'C', content: 'Օգտագործելով միայն ստատիկ մեթոդներ' },
-			{ id: 'D', content: 'Բոլոր տարբերակներն էլ ճիշտ են' }
-		],
-		correctAnswerId: 'A',
-	},
-	{
-		id: '2',
-		classId: 'cs101',
-		groupIds: ['group1'],
-		content: 'Բացատրեք Observer նախագծման օրինաչափության կիրառությունը իրական կյանքից օրինակով:',
-		type: 'text',
-	},
-	{
-		id: '3',
-		classId: 'cs201',
-		groupIds: ['group3'],
-		content: 'Ինչպե՞ս է աշխատում Quick Sort ալգորիթմը:',
-		type: 'quiz',
-		answers: [
-			{ id: 'A', content: 'Օգտագործում է բաժանում և նվաճում մոտեցում' },
-			{ id: 'B', content: 'Օգտագործում է դինամիկ ծրագրավորում' },
-			{ id: 'C', content: 'Օգտագործում է greedy մոտեցում' },
-			{ id: 'D', content: 'Օգտագործում է backtracking մոտեցում' }
-		],
-		correctAnswerId: 'A',
-	},
-	{
-		id: '4',
-		classId: 'cs301',
-		groupIds: ['group5'],
-		content: 'Ինչպե՞ս է աշխատում էջերի փոխարինման LRU ալգորիթմը:',
-		type: 'text',
-	},
-	{
-		id: '5',
-		classId: 'cs401',
-		groupIds: ['group4'],
-		content: 'Ինչպե՞ս է աշխատում B-tree ինդեքսը տվյալների բազաներում:',
-		type: 'quiz',
-		answers: [
-			{ id: 'A', content: 'Օգտագործում է հավասարակշռված ծառ' },
-			{ id: 'B', content: 'Օգտագործում է հեշավորման ֆունկցիա' },
-			{ id: 'C', content: 'Օգտագործում է գծային որոնում' },
-			{ id: 'D', content: 'Օգտագործում է բինար որոնում' }
-		],
-		correctAnswerId: 'A',
-	}
-];
+import { Question } from './interfaces/question.interface';
 
 @Injectable()
 export class QuestionsService {
-	private questions = [...mockQuestions];
+	private readonly questions: Question[] = [
+		{
+			id: '1',
+			content: 'The capital of France is ____.',
+			type: 'quiz',
+			answers: [
+				{ id: '1', content: 'Paris' },
+				{ id: '2', content: 'London' },
+				{ id: '3', content: 'Berlin' },
+				{ id: '4', content: 'Madrid' }
+			],
+			correctAnswerId: '1',
+			groupIds: ['group1', 'group2'],
+			topicIds: ['Programming'],
+		},
+		{
+			id: '2',
+			content: 'The largest planet in our solar system is ____.',
+			type: 'quiz',
+			answers: [
+				{ id: '1', content: 'Jupiter' },
+				{ id: '2', content: 'Saturn' },
+				{ id: '3', content: 'Mars' },
+				{ id: '4', content: 'Earth' }
+			],
+			correctAnswerId: '1',
+			groupIds: ['group1', 'group2'],
+			topicIds: ['Algorithms']
+		},
+		{
+			id: '3',
+			content: 'What is the capital of France?',
+			type: 'quiz',
+			answers: [
+				{ id: '1', content: 'Paris' },
+				{ id: '2', content: 'London' },
+				{ id: '3', content: 'Berlin' },
+				{ id: '4', content: 'Madrid' }
+			],
+			correctAnswerId: '1',
+			groupIds: ['group3', 'group4'],
+			topicIds: ['Algorithms']
+		},
+		{
+			id: '5',
+			groupIds: ['group3', 'group4'],
+			topicIds: ['Algorithms'],
+			content: 'Ինչպե՞ս է աշխատում Quick Sort ալգորիթմը:',
+			type: 'quiz',
+			answers: [
+				{ id: 'A', content: 'Օգտագործում է բաժանում և նվաճում մոտեցում' },
+				{ id: 'B', content: 'Օգտագործում է դինամիկ ծրագրավորում' },
+				{ id: 'C', content: 'Օգտագործում է greedy մոտեցում' },
+				{ id: 'D', content: 'Օգտագործում է backtracking մոտեցում' }
+			],
+			correctAnswerId: 'A',
+		},
+		{
+			id: '7',
+			groupIds: ['group4', 'group5'],
+			topicIds: ['Data Structures'],
+			content: 'Ինչպե՞ս է աշխատում B-tree ինդեքսը տվյալների բազաներում:',
+			type: 'quiz',
+			answers: [
+				{ id: 'A', content: 'Օգտագործում է հավասարակշռված ծառ' },
+				{ id: 'B', content: 'Օգտագործում է հեշավորման ֆունկցիա' },
+				{ id: 'C', content: 'Օգտագործում է գծային որոնում' },
+				{ id: 'D', content: 'Օգտագործում է բինար որոնում' }
+			],
+			correctAnswerId: 'A',
+		}
+	];
 
 	constructor(private readonly questionsGateway: QuestionsGateway) { }
 
-	async create(createQuestionDto: Omit<Question, 'id'>) {
+	create(createQuestionDto: Omit<Question, 'id'>): Question {
 		const newQuestion: Question = {
 			id: (this.questions.length + 1).toString(),
 			...createQuestionDto
@@ -77,41 +89,28 @@ export class QuestionsService {
 		return newQuestion;
 	}
 
-	async findAll(groupIds: string, classId: string) {
-		if (groupIds && classId) {
-			return this.findByGroupIdsAndClassId(groupIds, classId);
-		} else if (groupIds) {
-			return this.findByGroupIds(groupIds);
-		} else if (classId) {
-			return this.findByClassId(classId);
-		}
+	findAll(groupId?: string, topicId?: string): Question[] {
+		const groupIds = groupId ? groupId.split(',') : [];
 
-		return this.questions;
+		return this.questions.filter(question => {
+			const matchesGroup = question.groupIds.some(id => groupIds.includes(id));
+			const matchesTopic = !topicId || question.topicIds.includes(topicId);
+			return matchesGroup && matchesTopic;
+		});
 	}
 
-	async findOne(id: string) {
+	findOne(id: string): Question | undefined {
 		return this.questions.find(q => q.id === id);
 	}
 
-	async findByClassId(classId: string) {
-		return this.questions.filter(q => q.classId === classId);
-	}
-
-	async findByGroupIdsAndClassId(groupIds: string, classId: string) {
+	findByGroupIds(groupIds: string, questions = this.questions): Question[] {
 		const groupIdsArray = groupIds.split(',');
-		return this.questions.filter(q => q.groupIds.some(groupId => groupIdsArray.includes(groupId)) && q.classId === classId);
+		return questions.filter(q => q.groupIds.some(groupId => groupIdsArray.includes(groupId)));
 	}
 
-	async findByGroupIds(groupIds: string) {
-		const groupIdsArray = groupIds.split(',');
-
-		console.log(groupIdsArray);
-		return this.questions.filter(q => q.groupIds.some(groupId => groupIdsArray.includes(groupId)));
-	}
-
-	async update(id: string, updateQuestionDto: Partial<Question>) {
+	update(id: string, updateQuestionDto: Partial<Question>): Question | undefined {
 		const index = this.questions.findIndex(q => q.id === id);
-		if (index === -1) return null;
+		if (index === -1) return undefined;
 
 		this.questions[index] = {
 			...this.questions[index],
@@ -121,9 +120,9 @@ export class QuestionsService {
 		return this.questions[index];
 	}
 
-	async remove(id: string) {
+	remove(id: string): Question | undefined {
 		const index = this.questions.findIndex(q => q.id === id);
-		if (index === -1) return null;
+		if (index === -1) return undefined;
 
 		const removedQuestion = this.questions[index];
 		this.questions.splice(index, 1);

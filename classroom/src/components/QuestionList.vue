@@ -1,15 +1,47 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, watch } from 'vue';
 import { io } from 'socket.io-client';
 
 const questions = ref([]);
 const loading = ref(true);
 const error = ref(null);
 const socket = ref(null);
+const subjects = ref([]);
+const selectedSubject = ref(null);
+const topics = ref([]);
+const selectedTopic = ref(null);
+
+const fetchSubjects = async () => {
+  try {
+    const response = await fetch('http://localhost:3000/subjects');
+    if (!response.ok) {
+      throw new Error('Failed to fetch subjects');
+    }
+    subjects.value = await response.json();
+  } catch (err) {
+    error.value = err.message;
+    console.error('Error fetching subjects:', err);
+  }
+};
+
+const fetchTopics = async (subjectId) => {
+  try {
+    const response = await fetch(`http://localhost:3000/subjects/${subjectId}/topics`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch topics');
+    }
+    topics.value = await response.json();
+  } catch (err) {
+    error.value = err.message;
+    console.error('Error fetching topics:', err);
+  }
+};
 
 const fetchQuestions = async () => {
+  if (!selectedTopic.value) return;
+  
   try {
-    const response = await fetch('http://localhost:3000/questions');
+    const response = await fetch(`http://localhost:3000/questions?topicId=${selectedTopic.value}`);
     if (!response.ok) {
       throw new Error('Failed to fetch questions');
     }
@@ -43,14 +75,18 @@ const setupWebSocket = () => {
 
   socket.value.on('questionCreated', (question) => {
     console.log('Received questionCreated event:', question);
-    questions.value.push(question);
+    if (question.topicIds.includes(selectedTopic.value)) {
+      questions.value.push(question);
+    }
   });
 
   socket.value.on('questionUpdated', (updatedQuestion) => {
     console.log('Received questionUpdated event:', updatedQuestion);
-    const index = questions.value.findIndex(q => q.id === updatedQuestion.id);
-    if (index !== -1) {
-      questions.value[index] = updatedQuestion;
+    if (updatedQuestion.topicIds.includes(selectedTopic.value)) {
+      const index = questions.value.findIndex(q => q.id === updatedQuestion.id);
+      if (index !== -1) {
+        questions.value[index] = updatedQuestion;
+      }
     }
   });
 
@@ -60,8 +96,23 @@ const setupWebSocket = () => {
   });
 };
 
+watch(selectedSubject, (newSubject) => {
+  if (newSubject) {
+    fetchTopics(newSubject);
+    selectedTopic.value = null;
+    questions.value = [];
+  }
+});
+
+watch(selectedTopic, (newTopic) => {
+  if (newTopic) {
+    loading.value = true;
+    fetchQuestions();
+  }
+});
+
 onMounted(() => {
-  fetchQuestions();
+  fetchSubjects();
   setupWebSocket();
 });
 
@@ -76,7 +127,28 @@ onUnmounted(() => {
 <template>
   <div class="question-list">
     <h2>Հարցում</h2>
-	<h3>Առարկա՝ Ծրագրավորման համակարգեր</h3>
+    
+    <div class="selection-container">
+      <div class="select-group">
+        <label for="subject">Առարկա</label>
+        <select id="subject" v-model="selectedSubject">
+          <option value="">Ընտրել առարկա</option>
+          <option v-for="subject in subjects" :key="subject._id" :value="subject._id">
+            {{ subject.name }}
+          </option>
+        </select>
+      </div>
+
+      <div class="select-group" v-if="selectedSubject">
+        <label for="topic">Թեմա</label>
+        <select id="topic" v-model="selectedTopic">
+          <option value="">Ընտրել թեմա</option>
+          <option v-for="topic in topics" :key="topic.name" :value="topic.name">
+            {{ topic.name }}
+          </option>
+        </select>
+      </div>
+    </div>
     
     <div v-if="loading" class="loading">
       Loading questions...
@@ -87,25 +159,12 @@ onUnmounted(() => {
     </div>
     
     <div v-else-if="questions.length === 0" class="no-questions">
-      No questions available yet.
+      No questions available for the selected topic.
     </div>
     
     <div v-else class="questions">
       <div v-for="question in questions" :key="question.id" class="question-card">
         <h3>{{ question.content }}</h3>
-		<div class="radio-group">
-			<input type="radio" id="html" name="fav_language" value="HTML">
-			<label for="html">Օգտագործելով abstract կլասեր և interface-ներ</label><br>
-			<input type="radio" id="css" name="fav_language" value="CSS">
-			<label for="css">Օգտագործելով միայն sealed կլասեր
-			</label><br>
-			<input type="radio" id="javascript" name="fav_language" value="JavaScript">
-			<label for="javascript">Օգտագործելով միայն ստատիկ մեթոդներ</label><br>
-			<input type="radio" id="javascript" name="fav_language" value="JavaScript">
-			<label for="javascript">Բոլոր տարբերակներն էլ ճիշտ են</label>
-		</div>
-        <!-- <p class="question-type">Type: {{ question.type }}</p> -->
-		 
         <div v-if="question.type === 'quiz'" class="quiz-info">
           <p>Correct Answer ID: {{ question.correctAnswerId }}</p>
           <div v-if="question.answers" class="answers">
@@ -124,6 +183,30 @@ onUnmounted(() => {
   width: 100%;
   max-width: 800px;
   padding: 20px;
+}
+
+.selection-container {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.select-group {
+  flex: 1;
+}
+
+.select-group label {
+  display: block;
+  margin-bottom: 5px;
+  color: #051f4f;
+}
+
+.select-group select {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: white;
 }
 
 h2 {
@@ -180,6 +263,20 @@ h3 {
 
 .answers p {
   margin: 5px 0;
+  color: #666;
+}
+
+.radio-group {
+  margin-top: 15px;
+}
+
+.radio-group input[type="radio"] {
+  margin-right: 10px;
+}
+
+.radio-group label {
+  display: inline-block;
+  margin-bottom: 10px;
   color: #666;
 }
 </style> 

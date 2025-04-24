@@ -1,74 +1,33 @@
-import { Controller, Get, Post, Body, Param, Query, Put, Delete, HttpException, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query } from '@nestjs/common';
 import { QuestionsService } from './questions.service';
-import { Question } from '../schemas/question.schema';
+import { Question } from './interfaces/question.interface';
 
 @Controller('questions')
 export class QuestionsController {
   constructor(private readonly questionsService: QuestionsService) {}
 
   @Post()
-  async create(@Body() createQuestionDto: any): Promise<Question> {
-    try {
-      return await this.questionsService.create(createQuestionDto);
-    } catch (error) {
-      throw new HttpException('Failed to create question', HttpStatus.INTERNAL_SERVER_ERROR);
-    }
+  create(@Body() createQuestionDto: Omit<Question, 'id'>): Question {
+    return this.questionsService.create(createQuestionDto);
   }
 
   @Get()
-	findAll(@Query('groupIds') groupIds: string, @Query('classId') classId: string) {
-    try {
-      return this.questionsService.findAll(groupIds, classId);
-    } catch (error) {
-      throw new HttpException('Failed to fetch questions', HttpStatus.INTERNAL_SERVER_ERROR);
-    }
+  findAll(@Query('groupIds') groupIds?: string, @Query('topicId') topicId?: string): Question[] {
+    return this.questionsService.findAll(groupIds, topicId);
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string) {
-    try {
-      const question = await this.questionsService.findOne(id);
-      if (!question) {
-        throw new HttpException('Question not found', HttpStatus.NOT_FOUND);
-      }
-      return question;
-    } catch (error) {
-      if (error instanceof HttpException) {
-        throw error;
-      }
-      throw new HttpException('Failed to fetch question', HttpStatus.INTERNAL_SERVER_ERROR);
-    }
+  findOne(@Param('id') id: string): Question | undefined {
+    return this.questionsService.findOne(id);
   }
 
-  @Put(':id')
-  async update(@Param('id') id: string, @Body() updateQuestionDto: any) {
-    try {
-      const question = await this.questionsService.update(id, updateQuestionDto);
-      if (!question) {
-        throw new HttpException('Question not found', HttpStatus.NOT_FOUND);
-      }
-      return question;
-    } catch (error) {
-      if (error instanceof HttpException) {
-        throw error;
-      }
-      throw new HttpException('Failed to update question', HttpStatus.INTERNAL_SERVER_ERROR);
-    }
+  @Patch(':id')
+  update(@Param('id') id: string, @Body() updateQuestionDto: Partial<Question>): Question | undefined {
+    return this.questionsService.update(id, updateQuestionDto);
   }
 
   @Delete(':id')
-  async remove(@Param('id') id: string) {
-    try {
-      const question = await this.questionsService.remove(id);
-      if (!question) {
-        throw new HttpException('Question not found', HttpStatus.NOT_FOUND);
-      }
-      return question;
-    } catch (error) {
-      if (error instanceof HttpException) {
-        throw error;
-      }
-      throw new HttpException('Failed to delete question', HttpStatus.INTERNAL_SERVER_ERROR);
-    }
+  remove(@Param('id') id: string): Question | undefined {
+    return this.questionsService.remove(id);
   }
 } 

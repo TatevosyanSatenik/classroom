@@ -23,8 +23,8 @@ onMounted(() => {
 			console.log('Parsed user:', user);
 			userEmail.value = user.email;
 			userRole.value = user.role;
+			console.log(user.groupId);
 			userGroupId.value = user.groupId;
-
 		} else {
 			console.log('No user found in localStorage');
 			router.push('/');
@@ -52,7 +52,7 @@ onMounted(() => {
 
 		<div class="content">
 			<ProfessorPage v-if="isProfessor" />
-			<StudentQuestionList v-else :groupId="userGroupId" :email="userEmail" />
+			<StudentQuestionList v-else :groupIds="[userGroupId]" :email="userEmail" />
 		</div>
 	</div>
 </template>
