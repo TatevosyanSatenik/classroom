@@ -13,23 +13,25 @@ const emit = defineEmits(['submit', 'cancel']);
 const content = ref('');
 const type = ref('quiz');
 const answers = ref([
-  { id: '1', content: '' },
-  { id: '2', content: '' },
-  { id: '3', content: '' },
-  { id: '4', content: '' }
+  { id: '1', content: '', isCorrect: false },
+  { id: '2', content: '', isCorrect: false },
+  { id: '3', content: '', isCorrect: false },
+  { id: '4', content: '', isCorrect: false }
 ]);
 const correctAnswerId = ref('1');
+const points = ref(0.25);
 
 const resetForm = () => {
   content.value = '';
   type.value = 'quiz';
   answers.value = [
-    { id: '1', content: '' },
-    { id: '2', content: '' },
-    { id: '3', content: '' },
-    { id: '4', content: '' }
+    { id: '1', content: '', isCorrect: false },
+    { id: '2', content: '', isCorrect: false },
+    { id: '3', content: '', isCorrect: false },
+    { id: '4', content: '', isCorrect: false }
   ];
   correctAnswerId.value = '1';
+  points.value = 0.25;
 };
 
 const handleSubmit = () => {
@@ -50,7 +52,8 @@ const handleSubmit = () => {
     content: content.value,
     type: type.value,
     answers: type.value === 'quiz' ? answers.value : undefined,
-    correctAnswerId: type.value === 'quiz' ? correctAnswerId.value : undefined
+    correctAnswerId: type.value === 'quiz' ? correctAnswerId.value : undefined,
+    points: points.value
   };
 
   emit('submit', questionData);
@@ -71,6 +74,9 @@ watch(() => props.question, (newQuestion) => {
     }
     if (newQuestion.correctAnswerId) {
       correctAnswerId.value = newQuestion.correctAnswerId;
+    }
+    if (newQuestion.points) {
+      points.value = newQuestion.points;
     }
   } else {
     resetForm();
@@ -117,6 +123,17 @@ watch(() => props.question, (newQuestion) => {
           required
         >
       </div>
+    </div>
+
+    <div class="form-group">
+      <label for="points">Points:</label>
+      <input
+        id="points"
+        v-model="points"
+        type="number"
+        step="0.01"
+        required
+      >
     </div>
 
     <div class="form-actions">

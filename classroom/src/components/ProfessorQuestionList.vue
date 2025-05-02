@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from 'vue';
-import { io } from 'socket.io-client';
 import QuestionForm from './QuestionForm.vue';
+import { professorService } from '../services/professor.service';
+import type { Question, StudentAnswer } from '@/types';
+import AnalyticsChart from './AnalyticsChart.vue';
+import { socketService } from '../services/socket.service';
 
 const props = defineProps({
   groupIds: {
@@ -14,13 +17,14 @@ const props = defineProps({
   }
 });
 
-const questions = ref([]);
-const answers = ref([]);
+const questions = ref<Question[]>([]);
+const answers = ref<StudentAnswer[]>([]);
 const loading = ref(true);
-const error = ref(null);
-const socket = ref(null);
-const editingQuestion = ref(null);
+const error = ref<string | null>(null);
+const editingQuestion = ref<Question | null>(null);
 const showEditForm = ref(false);
+const selectedQuestion = ref<Question | null>(null);
+const showAnalytics = ref(false);
 
 const fetchQuestions = async () => {
   if (!props.groupIds.length) {
@@ -30,21 +34,13 @@ const fetchQuestions = async () => {
   }
 
   try {
-    const queryParams = new URLSearchParams();
-    props.groupIds.forEach(groupId => {
-      queryParams.append('groupIds', groupId);
-    });
-    
-    if (props.topicId) {
-      queryParams.append('topicId', props.topicId);
-    }
-
-    const response = await fetch(`http://localhost:3000/questions?${queryParams.toString()}`);
-    const fetchedQuestions = await response.json();
-    questions.value = fetchedQuestions;
-
-  } catch (error) {
-    console.error('Error fetching questions:', error);
+    const params = {
+      groupIds: props.groupIds.join(','),
+      topicId: props.topicId
+    };
+    questions.value = await professorService.loadQuestions(params);
+  } catch (err: unknown) {
+    console.error('Error fetching questions:', err);
     error.value = 'Failed to fetch questions';
   } finally {
     loading.value = false;
@@ -53,38 +49,21 @@ const fetchQuestions = async () => {
 
 const handleDelete = async (questionId: string) => {
   try {
-    const response = await fetch(`http://localhost:3000/questions/${questionId}`, {
-      method: 'DELETE',
-    });
-    if (!response.ok) {
-      throw new Error('Failed to delete question');
-    }
+    await professorService.deleteQuestion(questionId);
     questions.value = questions.value.filter(q => q.id !== questionId);
   } catch (err) {
     console.error('Error deleting question:', err);
   }
 };
 
-const handleEdit = (question) => {
+const handleEdit = (question: Question) => {
   editingQuestion.value = question;
   showEditForm.value = true;
 };
 
-const handleUpdate = async (updatedQuestion) => {
+const handleUpdate = async (updatedQuestion: Partial<Question>) => {
   try {
-    const response = await fetch(`http://localhost:3000/questions/${editingQuestion.value.id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(updatedQuestion),
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to update question');
-    }
-
-    const updated = await response.json();
+    const updated = await professorService.updateQuestion(editingQuestion.value!.id, updatedQuestion);
     const index = questions.value.findIndex(q => q.id === updated.id);
     if (index !== -1) {
       questions.value[index] = updated;
@@ -101,19 +80,9 @@ const handleCancelEdit = () => {
   editingQuestion.value = null;
 };
 
-const setupWebSocket = () => {
-  socket.value = io('http://localhost:3000/answers', {
-    withCredentials: true
-  });
-
-  socket.value.on('connect', () => {
-    console.log('WebSocket connected');
-  });
-
-  socket.value.on('new-answer', (answer) => {
-    console.log('Received new answer:', answer);
-    answers.value.push(answer);
-  });
+const handleShowAnalytics = (question: Question) => {
+  selectedQuestion.value = question;
+  showAnalytics.value = true;
 };
 
 watch([() => props.groupIds, () => props.topicId], () => {
@@ -121,15 +90,19 @@ watch([() => props.groupIds, () => props.topicId], () => {
   fetchQuestions();
 }, { immediate: true });
 
-onMounted(() => {
+onMounted(async () => {
   fetchQuestions();
-  setupWebSocket();
+  answers.value = await professorService.getAnswers('');
+  
+  // Connect to socket and listen for answers
+  socketService.emit('professor-connect', 'professor@example.com');
+  socketService.on('new-answer', async () => {
+    answers.value = await professorService.getAnswers('');
+  });
 });
 
 onUnmounted(() => {
-  if (socket.value) {
-    socket.value.disconnect();
-  }
+  socketService.off('new-answer', () => {});
 });
 </script>
 
@@ -153,12 +126,18 @@ onUnmounted(() => {
       <div v-for="question in questions" :key="question.id" class="question-card">
         <div class="question-header">
           <h3>{{ question.content }}</h3>
-          <div class="question-type">
-            {{ '[ ' + question.type + ' ]' }}
+          <div class="question-meta">
+            <div class="question-type">
+              {{ '[ ' + question.type + ' ]' }}
+            </div>
+            <div class="question-points">
+              {{ question.points }} points
+            </div>
           </div>
           <div class="question-actions">
             <button class="edit-btn" @click="handleEdit(question)">Edit</button>
             <button class="delete-btn" @click="handleDelete(question.id)">Delete</button>
+            <button class="analytics-btn" @click="handleShowAnalytics(question)">Analytics</button>
           </div>
         </div>
 
@@ -168,15 +147,33 @@ onUnmounted(() => {
             <span v-if="option.isCorrect" class="correct-indicator">✓</span>
           </div>
         </div>
+
+        <div class="answers-section">
+          <h4>Student Answers</h4>
+          <div v-for="answer in answers.filter(a => a.questionId === question.id)" :key="answer.timestamp" class="answer">
+            <div class="answer-header">
+              <span class="student-email">{{ answer.email }}</span>
+              <span class="answer-score">{{ answer.score }}/{{ answer.totalScore }}</span>
+            </div>
+            <div class="answer-content">
+              {{ answer.answer.text || answer.answer.answerId }}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
-    <div v-if="showEditForm" class="edit-form-container">
+    <div v-if="showEditForm && editingQuestion" class="edit-form-container">
       <QuestionForm 
         :question="editingQuestion"
         @submit="handleUpdate"
         @cancel="handleCancelEdit"
       />
+    </div>
+
+    <div class="analytics-section">
+      <h3>Overall Analytics</h3>
+      <AnalyticsChart />
     </div>
   </div>
 </template>
@@ -217,27 +214,31 @@ onUnmounted(() => {
   margin-bottom: 15px;
 }
 
-.answers-list {
-  display: grid;
-  gap: 15px;
-}
-
-.answer-item {
+.answer {
   background: #f8f9fa;
-  padding: 15px;
-  border-radius: 6px;
+  padding: 10px;
+  border-radius: 4px;
+  margin-bottom: 10px;
 }
 
 .answer-header {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 10px;
-  font-size: 0.9rem;
+  margin-bottom: 5px;
+  font-size: 0.9em;
+}
+
+.student-email {
   color: #666;
 }
 
+.answer-score {
+  color: #28a745;
+  font-weight: bold;
+}
+
 .answer-content {
-  margin-top: 10px;
+  color: #333;
 }
 
 .correct {
@@ -283,6 +284,7 @@ onUnmounted(() => {
 .question-actions {
   display: flex;
   gap: 10px;
+  margin-top: 10px;
 }
 
 .edit-btn, .delete-btn {
@@ -301,6 +303,19 @@ onUnmounted(() => {
 .delete-btn {
   background-color: #dc3545;
   color: white;
+}
+
+.analytics-btn {
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  padding: 5px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.analytics-btn:hover {
+  background-color: #45a049;
 }
 
 .question-options {
@@ -323,5 +338,32 @@ onUnmounted(() => {
 .correct-indicator {
   color: #28a745;
   font-weight: bold;
+}
+
+.question-meta {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.question-points {
+  color: #225dca;
+  font-weight: bold;
+}
+
+.analytics-section {
+  margin-top: 40px;
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.analytics-section h3 {
+  margin-bottom: 20px;
+  color: #225dca;
+  text-align: center;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #eee;
 }
 </style>

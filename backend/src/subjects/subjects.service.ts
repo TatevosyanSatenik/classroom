@@ -9,9 +9,9 @@ export class SubjectsService {
       name: 'Computer Science',
       description: 'Study of computers and computational systems',
       topics: [
-        { name: 'Algorithms', description: 'Study of algorithms and their complexity' },
-        { name: 'Data Structures', description: 'Study of data organization and storage' },
-        { name: 'Programming', description: 'Study of programming languages and paradigms' },
+        { id: '1', name: 'Algorithms', description: 'Study of algorithms and their complexity' },
+        { id: '2', name: 'Data Structures', description: 'Study of data organization and storage' },
+        { id: '3', name: 'Programming', description: 'Study of programming languages and paradigms' },
       ],
     },
     {
@@ -19,9 +19,9 @@ export class SubjectsService {
       name: 'Mathematics',
       description: 'Study of numbers, quantities, and shapes',
       topics: [
-        { name: 'Algebra', description: 'Study of mathematical symbols and rules' },
-        { name: 'Calculus', description: 'Study of continuous change' },
-        { name: 'Geometry', description: 'Study of shapes and spatial relationships' },
+        { id: '1', name: 'Algebra', description: 'Study of mathematical symbols and rules' },
+        { id: '2', name: 'Calculus', description: 'Study of continuous change' },
+        { id: '3', name: 'Geometry', description: 'Study of shapes and spatial relationships' },
       ],
     },
   ];

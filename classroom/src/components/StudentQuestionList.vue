@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, nextTick } from 'vue';
 import { timerService } from '../services/timer.service';
-import QuestionOverlay from './QuestionOverlay.vue';
+import { studentService } from '../services/student.service';
+import StudentQuestion from './StudentQuestion.vue';
+import type { Question, StudentAnswer, QuestionType } from '@/types';
 
 const props = defineProps({
   groupIds: {
@@ -11,20 +13,19 @@ const props = defineProps({
   topicId: {
     type: String,
     default: null
+  },
+  email: {
+    type: String,
+    required: true
   }
 });
 
-const questions = ref([]);
+const questions = ref<Question[]>([]);
 const loading = ref(true);
-const error = ref(null);
-const selectedQuestion = ref(null);
-const showOverlay = ref(false);
+const error = ref<string | null>(null);
 const timeUp = ref(false);
 
 const fetchQuestions = async () => {
-
-  console.log(props.groupIds);
-
   if (!props.groupIds.length) {
     questions.value = [];
     loading.value = false;
@@ -32,52 +33,33 @@ const fetchQuestions = async () => {
   }
 
   try {
-    const queryParams = new URLSearchParams();
-    queryParams.append('groupIds', props.groupIds.join(','));
-    
-    if (props.topicId) {
-      queryParams.append('topicId', props.topicId);
-    }
-
-    const response = await fetch(`http://localhost:3000/questions?${queryParams.toString()}`);
-    const fetchedQuestions = await response.json();
-    questions.value = fetchedQuestions;
-  } catch (error) {
-    console.error('Error fetching questions:', error);
+    const params = {
+      groupIds: props.groupIds.join(','),
+      topicId: props.topicId
+    };
+    questions.value = await studentService.loadQuestions(params);
+  } catch (err: unknown) {
+    console.error('Error fetching questions:', err);
     error.value = 'Failed to fetch questions';
   } finally {
     loading.value = false;
   }
 };
 
-const handleQuestionClick = (question) => {
-  if (timeUp.value) return;
-  selectedQuestion.value = question;
-  showOverlay.value = true;
-};
-
-const handleAnswerSubmit = async (answer) => {
+const handleAnswerSubmit = async (answer: { questionId: string; answerId: string; type: QuestionType; tabChanged?: boolean; status?: string }) => {
   try {
-
-    console.log(answer);
-
-    const response = await fetch('http://localhost:3000/answers', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
+    console.log('Submitting answer:', answer);
+    await studentService.submitAnswer({
+      questionId: answer.questionId,
+      answer: {
+        type: answer.type,
+        answerId: answer.answerId,
+        tabChanged: answer.tabChanged,
+        isCorrect: false // This will be determined by the backend
       },
-      body: JSON.stringify({
-        questionId: selectedQuestion.value.id,
-        answer,
-      }),
+      email: props.email,
+      timestamp: Date.now(),
     });
-
-    if (!response.ok) {
-      throw new Error('Failed to submit answer');
-    }
-
-    // Remove the answered question from the list
-    questions.value = questions.value.filter(q => q.id !== selectedQuestion.value.id);
   } catch (error) {
     console.error('Error submitting answer:', error);
   }
@@ -122,27 +104,10 @@ onUnmounted(() => {
       No questions available.
     </div>
 
-    <div v-else class="questions">
-      <div 
-        v-for="question in questions" 
-        :key="question.id" 
-        class="question-card"
-        @click="handleQuestionClick(question)"
-      >
-        <div class="question-content">
-          Click to answer
-        </div>
-        <div class="question-type">
-          {{ '[ ' + question.type + ' ]' }}
-        </div>
-      </div>
-    </div>
-
-    <QuestionOverlay
-      v-if="showOverlay"
-      :question="selectedQuestion"
+    <StudentQuestion 
+      v-else 
+      :question-list="questions" 
       @submit="handleAnswerSubmit"
-      @close="showOverlay = false"
     />
   </div>
 </template>
@@ -163,35 +128,6 @@ onUnmounted(() => {
   border-radius: 4px;
   font-size: 18px;
   font-weight: bold;
-}
-
-.questions {
-  display: grid;
-  gap: 20px;
-  margin-top: 60px;
-}
-
-.question-card {
-  background: white;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  cursor: pointer;
-  transition: transform 0.2s;
-}
-
-.question-card:hover {
-  transform: translateY(-2px);
-}
-
-.question-content {
-  margin-bottom: 10px;
-  font-size: 16px;
-}
-
-.question-type {
-  color: #666;
-  font-size: 14px;
 }
 
 .loading, .error, .no-questions {

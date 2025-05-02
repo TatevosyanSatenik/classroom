@@ -1,13 +1,11 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
 import { timerService } from '../services/timer.service';
+import type { Question } from '@/types';
 
-const props = defineProps({
-  question: {
-    type: Object,
-    required: true
-  }
-});
+const props = defineProps<{
+  question: Question;
+}>();
 
 const emit = defineEmits(['submit', 'close']);
 

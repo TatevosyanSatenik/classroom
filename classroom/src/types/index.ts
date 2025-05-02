@@ -26,17 +26,17 @@ export interface Answer {
   isCorrect?: boolean;
 }
 
-export interface Topic {
-  id: string;
-  name: string;
-  description: string;
-}
-
 export interface Subject {
   id: string;
   name: string;
   description: string;
   topics: Topic[];
+}
+
+export interface Topic {
+  id: string;
+  name: string;
+  description: string;
 }
 
 export interface Year {
@@ -61,13 +61,13 @@ export interface StudentAnswer {
   };
   email: string;
   timestamp: number;
-  score: number;
-  totalScore: number;
-  status: 'correct' | 'incorrect' | 'invalid';
+  score?: number;
+  totalScore?: number;
+  status?: 'correct' | 'incorrect' | 'invalid';
 }
 
 export interface User {
   id: string;
   email: string;
   role: 'student' | 'professor';
-}
+} 

@@ -1,59 +1,57 @@
 import { Injectable } from '@nestjs/common';
+import type { StudentAnswer } from '../types';
 import { QuestionsService } from '../questions/questions.service';
-
-export interface QuizAnswer {
-  questionId: string;
-  answerId: string;
-  type: 'quiz';
-  tabChanged?: boolean;
-}
-
-export interface UserAnswer {
-  email: string;
-  groupId: string;
-  classId: string;
-  answer: QuizAnswer;
-  isCorrect: boolean;
-  timestamp: number;
-}
-
-const answers: UserAnswer[] = [];
 
 @Injectable()
 export class AnswersService {
+  private answers: StudentAnswer[] = [];
+
   constructor(private readonly questionsService: QuestionsService) {}
 
-  getAllAnswers() {
-    return answers;
-  }
-
-  getAnswersByEmail(email: string) {
-    return answers.filter((answer) => answer.email === email);
-  }
-
-  getAnswersByGroupId(groupId: string) {
-    return answers.filter((answer) => answer.groupId === groupId);
-  }
-
-  createAnswer(answer: Omit<UserAnswer, 'timestamp' | 'isCorrect'>) {
-    const question = this.questionsService.findOne(answer.answer.questionId);
-    let isCorrect = false;
-
-    if (question) {
-      if (answer.answer.tabChanged) {
-        isCorrect = false;
-      } else {
-        isCorrect = answer.answer.answerId === question.correctAnswerId;
-      }
+  async submitAnswer(answer: StudentAnswer) {
+    const question = await this.questionsService.getQuestion(answer.questionId);
+    if (!question) {
+      throw new Error('Question not found');
     }
 
-    const newAnswer: UserAnswer = {
+    // Calculate score based on question type and status
+    let score = 0;
+    const totalScore = question.points;
+    let status: 'correct' | 'incorrect' | 'invalid' = 'invalid';
+
+    if (answer.answer.tabChanged) {
+      // If the answer is marked as invalid (tab change), keep it as invalid
+      status = 'invalid';
+      score = 0;
+    } else if (question.type === 'quiz') {
+      const selectedAnswer = question.answers?.find(a => a.id === answer.answer.answerId);
+      if (selectedAnswer) {
+        status = selectedAnswer.isCorrect ? 'correct' : 'incorrect';
+        score = selectedAnswer.isCorrect ? question.points : 0;
+      }
+    } else if (question.type === 'text') {
+      // For text questions, we'll need to implement a more sophisticated scoring system
+      // For now, we'll just set it to 0 and let the professor grade it later
+      status = 'incorrect';
+      score = 0;
+    }
+
+    const answerWithScore = {
       ...answer,
-      isCorrect,
-      timestamp: Date.now()
+      score,
+      totalScore,
+      status
     };
-    
-    answers.push(newAnswer);
-    return newAnswer;
+
+    this.answers.push(answerWithScore);
+    return answerWithScore;
+  }
+
+  async getAllAnswers() {
+    return this.answers;
+  }
+
+  async getAnswers(questionId: string) {
+    return this.answers.filter(answer => answer.questionId === questionId);
   }
 }

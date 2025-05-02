@@ -1,111 +1,98 @@
 import { ref } from 'vue';
 
-const STORAGE_KEY = 'exam_timer';
-const ONE_HOUR = 3600;
-
 class TimerService {
-  private timeLeft = ref(this.getStoredTime());
-  private timer: number | null = null;
-  private onTimeUpCallback: (() => void) | null = null;
-  private onTabChangeCallback: (() => void) | null = null;
-  private lastFocusTime = Date.now();
-  private focusCheckInterval: number | null = null;
+  private static instance: TimerService;
+  private timer = ref<number>(0);
+  private timerInterval: number | null = null;
+  private tabChangeCallback: (() => void) | null = null;
+  private timeLimit: number = 60 * 60; // 1 hour in seconds
+  private startTime: number | null = null;
+  private readonly STORAGE_KEY = 'quiz_timer';
 
-  constructor() {
-    window.addEventListener('visibilitychange', this.handleVisibilityChange);
-    window.addEventListener('focus', this.handleFocus);
-    window.addEventListener('blur', this.handleBlur);
-    this.startFocusCheck();
-  }
-
-  private getStoredTime(): number {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const storedTime = parseInt(stored, 10);
-      const storedTimestamp = parseInt(localStorage.getItem(`${STORAGE_KEY}_timestamp`) || '0', 10);
-      const now = Date.now();
-      const elapsedSeconds = Math.floor((now - storedTimestamp) / 1000);
-      const remainingTime = Math.max(0, storedTime - elapsedSeconds);
-      return remainingTime || ONE_HOUR;
+  private constructor() {
+    // Load saved timer state
+    const savedState = localStorage.getItem(this.STORAGE_KEY);
+    if (savedState) {
+      const { startTime: savedStartTime, elapsedTime } = JSON.parse(savedState);
+      const now = Math.floor(Date.now() / 1000);
+      const elapsedSinceSave = now - savedStartTime;
+      this.timer.value = Math.min(elapsedTime + elapsedSinceSave, this.timeLimit);
+      this.startTime = savedStartTime;
     }
-    return ONE_HOUR;
-  }
 
-  private storeTime(time: number) {
-    localStorage.setItem(STORAGE_KEY, time.toString());
-    localStorage.setItem(`${STORAGE_KEY}_timestamp`, Date.now().toString());
-  }
-
-  private startFocusCheck() {
-    this.focusCheckInterval = window.setInterval(() => {
-      if (document.hidden) {
-        this.handleTabChange();
-      }
-    }, 1000);
-  }
-
-  private handleFocus = () => {
-    this.lastFocusTime = Date.now();
-  }
-
-  private handleBlur = () => {
-    const timeAway = Date.now() - this.lastFocusTime;
-    if (timeAway > 1000) {
-      this.handleTabChange();
-    }
+    // Add tab change detection
+    document.addEventListener('visibilitychange', this.handleVisibilityChange);
   }
 
   private handleVisibilityChange = () => {
-    if (document.hidden) {
-      this.handleTabChange();
+    if (document.hidden && this.tabChangeCallback) {
+      this.tabChangeCallback();
+    }
+  };
+
+  public static getInstance(): TimerService {
+    if (!TimerService.instance) {
+      TimerService.instance = new TimerService();
+    }
+    return TimerService.instance;
+  }
+
+  public getTimer() {
+    return this.timer.value;
+  }
+
+  public getTimeLeft() {
+    return this.timeLimit - this.timer.value;
+  }
+
+  public start(callback: () => void) {
+    if (!this.timerInterval) {
+      this.startTime = Math.floor(Date.now() / 1000);
+      this.timerInterval = window.setInterval(() => {
+        this.timer.value++;
+        this.saveState();
+        if (this.timer.value >= this.timeLimit) {
+          this.stop();
+          callback();
+        }
+      }, 1000);
     }
   }
 
-  private handleTabChange = () => {
-    if (this.onTabChangeCallback) {
-      this.onTabChangeCallback();
+  public stop() {
+    if (this.timerInterval) {
+      clearInterval(this.timerInterval);
+      this.timerInterval = null;
+      this.saveState();
     }
   }
 
-  start(onTimeUp: () => void) {
-    this.onTimeUpCallback = onTimeUp;
-    this.timer = window.setInterval(() => {
-      this.timeLeft.value--;
-      this.storeTime(this.timeLeft.value);
-      
-      if (this.timeLeft.value <= 0) {
-        this.stop();
-        localStorage.removeItem(STORAGE_KEY);
-        localStorage.removeItem(`${STORAGE_KEY}_timestamp`);
-        onTimeUp();
-      }
-    }, 1000);
-  }
-
-  stop() {
-    if (this.timer) {
-      clearInterval(this.timer);
-      this.timer = null;
-    }
-  }
-
-  getTimeLeft() {
-    return this.timeLeft.value;
-  }
-
-  setTabChangeCallback(callback: () => void) {
-    this.onTabChangeCallback = callback;
-  }
-
-  cleanup() {
+  public reset() {
     this.stop();
-    if (this.focusCheckInterval) {
-      clearInterval(this.focusCheckInterval);
+    this.timer.value = 0;
+    this.startTime = null;
+    localStorage.removeItem(this.STORAGE_KEY);
+  }
+
+  private saveState() {
+    if (this.startTime) {
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify({
+        startTime: this.startTime,
+        elapsedTime: this.timer.value
+      }));
     }
-    window.removeEventListener('visibilitychange', this.handleVisibilityChange);
-    window.removeEventListener('focus', this.handleFocus);
-    window.removeEventListener('blur', this.handleBlur);
+  }
+
+  public setTabChangeCallback(callback: (() => void) | null) {
+    this.tabChangeCallback = callback;
+  }
+
+  public cleanup() {
+    this.stop();
+    this.reset();
+    this.tabChangeCallback = null;
+    document.removeEventListener('visibilitychange', this.handleVisibilityChange);
   }
 }
 
-export const timerService = new TimerService(); 
+export const timerService = TimerService.getInstance(); 

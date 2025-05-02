@@ -1,28 +1,23 @@
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
 import QuestionForm from './QuestionForm.vue';
 import ProfessorQuestionList from './ProfessorQuestionList.vue';
 import YearGroupTree from './YearGroupTree.vue';
-import { io } from 'socket.io-client';
-import { getUser } from '../utils';
-
-const user = getUser();
-const userEmail = user?.email;
+import { professorService } from '../services/professor.service';
+import type { Subject, Topic, Question, StudentAnswer } from '@/types';
 
 const showForm = ref(false);
-const selectedGroups = ref([]);
-const allYears = ref([]);
-const years = ref([]);
-const socket = ref(null);
-const newAnswers = ref([]);
-const subjects = ref([]);
-const selectedSubject = ref(null);
-const selectedTopic = ref(null);
+const selectedGroups = ref<string[]>([]);
+const allYears = ref<any[]>([]);
+const years = ref<any[]>([]);
+const newAnswers = ref<StudentAnswer[]>([]);
+const subjects = ref<Subject[]>([]);
+const selectedSubject = ref<Subject | null>(null);
+const selectedTopic = ref<Topic | null>(null);
 
 const fetchSubjects = async () => {
   try {
-    const response = await fetch('http://localhost:3000/subjects');
-    subjects.value = await response.json();
+    subjects.value = await professorService.loadSubjects();
     if (subjects.value.length > 0) {
       selectedSubject.value = subjects.value[0];
     }
@@ -41,22 +36,12 @@ const fetchYears = async () => {
   }
 };
 
-const fetchExistingAnswers = async () => {
-  try {
-    const response = await fetch('http://localhost:3000/answers');
-    const existingAnswers = await response.json();
-    newAnswers.value = existingAnswers;
-  } catch (error) {
-    console.error('Error fetching existing answers:', error);
-  }
-};
-
-const handleGroupsSelect = (groups) => {
+const handleGroupsSelect = (groups: string[]) => {
   selectedGroups.value = groups;
   console.log(selectedTopic.value);
 };
 
-const handleQuestionSubmit = async (question) => {
+const handleQuestionSubmit = async (question: Omit<Question, 'id' | 'groupIds' | 'topicIds'>) => {
   if (selectedGroups.value.length === 0) {
     alert('Please select at least one group');
     return;
@@ -74,18 +59,7 @@ const handleQuestionSubmit = async (question) => {
       topicIds: [selectedTopic.value.id]
     };
 
-    const response = await fetch('http://localhost:3000/questions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(questionWithGroups),
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to add question');
-    }
-
+    await professorService.createQuestion(questionWithGroups);
     console.log('Question added successfully');
     showForm.value = false;
   } catch (error) {
@@ -93,38 +67,14 @@ const handleQuestionSubmit = async (question) => {
   }
 };
 
-onMounted(() => {
-  fetchYears();
-  fetchExistingAnswers();
-  fetchSubjects();
-  
-  // Connect to WebSocket server with namespace
-  socket.value = io('http://localhost:3000/answers', {
-    withCredentials: true
-  });
-
-  socket.value.on('connect', () => {
-    console.log('WebSocket connected');
-    // Register as professor
-    socket.value.emit('professor-connect', userEmail);
-  });
-
-  socket.value.on('connect_error', (error) => {
-    console.error('WebSocket connection error:', error);
-  });
-
-  // Listen for new answers
-  socket.value.on('new-answer', (answer) => {
-    console.log('Received new answer:', answer);
-    // Create a new array instead of pushing to the existing one
-    newAnswers.value = [...newAnswers.value, answer];
-  });
+onMounted(async () => {
+  await fetchYears();
+  await fetchSubjects();
+  newAnswers.value = await professorService.getAnswers('');
 });
 
 onUnmounted(() => {
-  if (socket.value) {
-    socket.value.disconnect();
-  }
+  professorService.cleanup();
 });
 </script>
 
@@ -195,8 +145,8 @@ onUnmounted(() => {
           <div class="answer-content">
             <template v-if="answer.answer.type === 'quiz'">
               <p>Selected answer: {{ answer.answer.answerId }}</p>
-              <p :class="{ 'correct': answer.answer.isCorrect, 'incorrect': !answer.answer.isCorrect }">
-                {{ answer.answer.isCorrect ? 'Correct' : 'Incorrect' }}
+              <p :class="{ 'correct': answer.status === 'correct', 'incorrect': answer.status === 'incorrect' }">
+                {{ answer.status === 'correct' ? 'Correct' : (answer.status === 'incorrect' ? 'Incorrect' : 'Invalid') }}
               </p>
             </template>
             <template v-else>
