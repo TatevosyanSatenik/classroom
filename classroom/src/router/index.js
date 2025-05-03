@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import InputPage from '../components/InputPage.vue';
 import HomePage from '../components/HomePage.vue';
+import StudentTable from '../components/StudentTable.vue';
 
 const routes = [
   {
@@ -13,6 +14,11 @@ const routes = [
     name: 'home',
     component: HomePage,
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/table',
+    name: 'table',
+    component: StudentTable
   }
 ];
 
