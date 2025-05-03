@@ -108,10 +108,10 @@ onUnmounted(() => {
 
 <template>
   <div class="professor-question-list">
-    <h2>Questions</h2>
+    <h2>Հարցեր</h2>
 
     <div v-if="loading" class="loading">
-      Loading questions...
+      Հարցերը բեռնվում են...
     </div>
 
     <div v-else-if="error" class="error">
@@ -119,7 +119,7 @@ onUnmounted(() => {
     </div>
 
     <div v-else-if="questions.length === 0" class="no-questions">
-      No questions available for the selected groups.
+      Ընտրված խմբերի համար հարցեր չկան
     </div>
 
     <div v-else class="questions">
@@ -131,13 +131,12 @@ onUnmounted(() => {
               {{ '[ ' + question.type + ' ]' }}
             </div>
             <div class="question-points">
-              {{ question.points }} points
+              {{ question.points }} միավոր
             </div>
           </div>
           <div class="question-actions">
-            <button class="edit-btn" @click="handleEdit(question)">Edit</button>
-            <button class="delete-btn" @click="handleDelete(question.id)">Delete</button>
-            <button class="analytics-btn" @click="handleShowAnalytics(question)">Analytics</button>
+            <button class="edit-btn" @click="handleEdit(question)">Թարմացնել</button>
+            <button class="delete-btn" @click="handleDelete(question.id)">Հեռացնել</button>
           </div>
         </div>
 
@@ -145,19 +144,6 @@ onUnmounted(() => {
           <div v-for="option in question.answers" :key="option.id" class="option">
             {{ option.content }}
             <span v-if="option.isCorrect" class="correct-indicator">✓</span>
-          </div>
-        </div>
-
-        <div class="answers-section">
-          <h4>Student Answers</h4>
-          <div v-for="answer in answers.filter(a => a.questionId === question.id)" :key="answer.timestamp" class="answer">
-            <div class="answer-header">
-              <span class="student-email">{{ answer.email }}</span>
-              <span class="answer-score">{{ answer.score }}/{{ answer.totalScore }}</span>
-            </div>
-            <div class="answer-content">
-              {{ answer.answer.text || answer.answer.answerId }}
-            </div>
           </div>
         </div>
       </div>
@@ -172,7 +158,6 @@ onUnmounted(() => {
     </div>
 
     <div class="analytics-section">
-      <h3>Overall Analytics</h3>
       <AnalyticsChart />
     </div>
   </div>

@@ -64,6 +64,7 @@ export interface StudentAnswer {
   score?: number;
   totalScore?: number;
   status?: 'correct' | 'incorrect' | 'invalid';
+  groupId: string;
 }
 
 export interface User {

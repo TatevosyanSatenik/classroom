@@ -89,22 +89,14 @@ watch(() => props.question, (newQuestion) => {
     <h2>{{ question ? 'Edit Question' : 'Add New Question' }}</h2>
     
     <div class="form-group">
-      <label for="content">Question Content:</label>
+      <label for="content">Հարցի բովանդակություն</label>
       <textarea
         id="content"
         v-model="content"
         rows="3"
-        placeholder="Enter your question here..."
+        placeholder="Մուտքագրեք հարցը այստեղ..."
         required
       ></textarea>
-    </div>
-
-    <div class="form-group">
-      <label for="type">Question Type:</label>
-      <select id="type" v-model="type">
-        <option value="quiz">Quiz</option>
-        <option value="text">Text</option>
-      </select>
     </div>
 
     <div v-if="type === 'quiz'" class="answers-section">
@@ -119,14 +111,14 @@ watch(() => props.question, (newQuestion) => {
         <input
           type="text"
           v-model="answer.content"
-          :placeholder="'Answer option ' + answer.id"
+          :placeholder="'Պատասխանի տարբերակ ' + answer.id"
           required
         >
       </div>
     </div>
 
     <div class="form-group">
-      <label for="points">Points:</label>
+      <label for="points">Միավորներ</label>
       <input
         id="points"
         v-model="points"
@@ -138,9 +130,9 @@ watch(() => props.question, (newQuestion) => {
 
     <div class="form-actions">
       <button class="submit-btn" @click="handleSubmit">
-        {{ question ? 'Update Question' : 'Add Question' }}
+        {{ question ? 'Թարմացնել հարցը' : 'Ավելացնել հարցը' }}
       </button>
-      <button class="cancel-btn" @click="handleCancel">Cancel</button>
+      <button class="cancel-btn" @click="handleCancel">Չեղարկել</button>
     </div>
   </div>
 </template>

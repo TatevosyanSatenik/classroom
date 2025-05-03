@@ -82,7 +82,7 @@ onUnmounted(() => {
   <div class="professor-page">
     <div class="content">
       <div class="header">
-        <h1>Professor Dashboard</h1>
+        <h1>Գլխավոր</h1>
         <button class="add-question-btn" @click="showForm = !showForm">
           {{ showForm ? 'Չեղարկել' : 'Ավելացնել հարցումներ' }}
         </button>
@@ -90,7 +90,7 @@ onUnmounted(() => {
 
       <div class="subject-topic-selector">
         <div class="selector-group">
-          <h2>Select Subject</h2>
+          <h2>Ընտրել առարկա</h2>
           <select v-model="selectedSubject" @change="selectedTopic = null">
             <option v-for="subject in subjects" :key="subject.id" :value="subject">
               {{ subject.name }}
@@ -99,7 +99,7 @@ onUnmounted(() => {
         </div>
 
         <div class="selector-group" v-if="selectedSubject">
-          <h2>Select Topic</h2>
+          <h2>Ընտրել թեմա</h2>
           <select v-model="selectedTopic">
             <option v-for="topic in selectedSubject.topics" :key="topic.id" :value="topic">
               {{ topic.name }}
@@ -110,10 +110,10 @@ onUnmounted(() => {
 
       <div class="layout">
         <div class="tree-container">
-          <h2>Years and Groups</h2>
+          <h2>Ընտրել խումբ</h2>
           <YearGroupTree :years="years" @select-groups="handleGroupsSelect" />
           <div v-if="selectedGroups.length > 0" class="selected-groups">
-            <h3>Selected Groups:</h3>
+            <h3>Ընտրված խմբեր:</h3>
             <ul>
               <li v-for="groupId in selectedGroups" :key="groupId">
                 {{years.flatMap(y => y.groups).find(g => g.id === groupId)?.name}}
@@ -131,28 +131,6 @@ onUnmounted(() => {
               :groupIds="selectedGroups" 
               :topicId="selectedTopic?.name" 
             />
-          </div>
-        </div>
-      </div>
-
-      <div class="new-answers-section" v-if="newAnswers.length > 0">
-        <h3>New Answers</h3>
-        <div v-for="answer in newAnswers" :key="answer.timestamp" class="answer-card">
-          <div class="answer-header">
-            <span class="student-email">{{ answer.email }}</span>
-            <span class="answer-time">{{ new Date(answer.timestamp).toLocaleTimeString() }}</span>
-          </div>
-          <div class="answer-content">
-            <template v-if="answer.answer.type === 'quiz'">
-              <p>Selected answer: {{ answer.answer.answerId }}</p>
-              <p :class="{ 'correct': answer.status === 'correct', 'incorrect': answer.status === 'incorrect' }">
-                {{ answer.status === 'correct' ? 'Correct' : (answer.status === 'incorrect' ? 'Incorrect' : 'Invalid') }}
-              </p>
-            </template>
-            <template v-else>
-              <p>Text answer:</p>
-              <p class="text-answer">{{ answer.answer.text }}</p>
-            </template>
           </div>
         </div>
       </div>

@@ -1,6 +1,6 @@
 <template>
 	<div class="question-container" v-if="question">
-		<button class="previous-btn button" @click="previousQuestion" :disabled="currentQuestion === 0">Previous</button>
+		<button class="previous-btn button" @click="previousQuestion" :disabled="currentQuestion === 0">Նախորդ հարց</button>
 		<div class="question-content">
 			<div class="question-header">
 				<h2>{{ question.content }}</h2>
@@ -19,14 +19,11 @@
 
 			<div class="actions">
 				<button class="submit-btn" @click="handleSubmit" :disabled="isSubmitting || !selectedAnswer">
-					{{ isSubmitting ? 'Submitting...' : 'Submit' }}
+					{{ isSubmitting ? 'Ուղարկվում է...' : 'Ուղարկել ստուգման' }}
 				</button>
 			</div>
 		</div>
-		<button class="next-btn button" @click="nextQuestion" :disabled="currentQuestion === remainingQuestions.length - 1">Next</button>
-	</div>
-	<div v-else>
-		All questions have been answered
+		<button class="next-btn button" @click="nextQuestion" :disabled="currentQuestion === remainingQuestions.length - 1">Հաջորդ հարց</button>
 	</div>
 	<InvalidQuestionPopup :show="showInvalidPopup" @close="showInvalidPopup = false" />
 </template>
@@ -34,7 +31,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { timerService } from '../services/timer.service';
-import type { Question } from '@/types';
+import type { Question, StudentAnswer } from '@/types';
 import InvalidQuestionPopup from './InvalidQuestionPopup.vue';
 
 const props = defineProps<{
@@ -48,6 +45,7 @@ const selectedAnswer = ref('');
 const isSubmitting = ref(false);
 const showInvalidPopup = ref(false);
 const answeredQuestionIds = ref<Set<string>>(new Set());
+const answers = ref<StudentAnswer[]>([]);
 
 const remainingQuestions = computed(() => {
 	return props.questionList.filter(q => !answeredQuestionIds.value.has(q.id));
@@ -122,6 +120,21 @@ const handleTabChange = async () => {
 		isSubmitting.value = false;
 	}
 };
+
+const correctAnswersCount = computed(() => {
+	return props.questionList.filter(q => 
+		answers.value.some((a: StudentAnswer) => 
+			a.questionId === q.id && a.status === 'correct'
+		)
+	).length;
+});
+
+const totalScore = computed(() => {
+	return answers.value.reduce((sum: number, answer: StudentAnswer) => {
+		const question = props.questionList.find(q => q.id === answer.questionId);
+		return sum + (answer.status === 'correct' ? (question?.points || 0) : 0);
+	}, 0);
+});
 
 onMounted(() => {
 	timerService.setTabChangeCallback(handleTabChange);
@@ -228,5 +241,46 @@ onUnmounted(() => {
 .submit-btn:disabled {
 	background-color: #ccc;
 	cursor: not-allowed;
+}
+
+.summary-container {
+	width: 100%;
+	max-width: 600px;
+	margin: 0 auto;
+	padding: 40px;
+	background: white;
+	border-radius: 8px;
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+	text-align: center;
+}
+
+.summary-container h2 {
+	color: #225dca;
+	margin-bottom: 30px;
+}
+
+.summary-content {
+	display: grid;
+	gap: 20px;
+}
+
+.summary-item {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 15px;
+	background: #f8f9fa;
+	border-radius: 4px;
+}
+
+.summary-item .label {
+	color: #666;
+	font-size: 16px;
+}
+
+.summary-item .value {
+	color: #225dca;
+	font-size: 20px;
+	font-weight: bold;
 }
 </style>

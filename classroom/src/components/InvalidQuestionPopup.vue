@@ -2,11 +2,11 @@
   <div class="popup-overlay" v-if="show">
     <div class="popup-content">
       <div class="popup-header">
-        <h3>Invalid Question</h3>
+        <h3>Անվավեր հարց</h3>
         <button class="close-btn" @click="close">×</button>
       </div>
       <div class="popup-body">
-        <p>The question has been submitted as invalid due to tab change.</p>
+        <p>Հարցը համարվում է անվավեր էջից բացակայելու պատճառով</p>
       </div>
     </div>
   </div>

@@ -1,64 +1,59 @@
 <template>
   <div class="analytics-container">
-    <div class="question-list">
-      <div v-for="question in questions" :key="question.id" class="question-card">
-        <div class="question-header">
-          <h4>{{ question.content }}</h4>
-        </div>
-        <div class="question-chart">
-          <Pie :data="getQuestionData(question.id)" :options="chartOptions" />
-        </div>
-        <div class="question-stats">
-          <div class="stat">
-            <span class="label">Ճիշտ</span>
-            <span class="value">{{ getCorrectCount(question.id) }}</span>
-          </div>
-          <div class="stat">
-            <span class="label">Սխալ</span>
-            <span class="value">{{ getIncorrectCount(question.id) }}</span>
-          </div>
-          <div class="stat">
-            <span class="label">Անվավեր</span>
-            <span class="value">{{ getInvalidCount(question.id) }}</span>
-          </div>
-        </div>
+    <div class="group-selector">
+      <h3>Ընտրել խումբ</h3>
+      <div class="group-buttons">
+        <button 
+          v-for="groupId in groupsIds" 
+          :key="groupId"
+          :class="{ active: selectedGroupId === groupId }"
+          @click="selectedGroupId = groupId"
+        >
+          {{ groupId }}
+        </button>
       </div>
     </div>
+
+    <GroupAnswersPopup
+      v-if="selectedGroupId"
+      :groupId="selectedGroupId"
+      :answers="answers"
+      :questions="questions"
+      @close="handleClose"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue';
+import { ref, onMounted } from 'vue';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { Pie } from 'vue-chartjs';
 import type { StudentAnswer, Question } from '@/types';
 import { professorService } from '@/services/professor.service';
-import { socketService } from '@/services/socket.service';
+import GroupAnswersPopup from './GroupAnswersPopup.vue';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
 const answers = ref<StudentAnswer[]>([]);
 const questions = ref<Question[]>([]);
-
-const chartOptions = {
-  responsive: true,
-  maintainAspectRatio: false,
-  plugins: {
-    legend: {
-      display: false
-    }
-  }
-};
+const groupsIds = ref<string[]>([]);
+const selectedGroupId = ref<string>('');
 
 const loadData = async () => {
   try {
     const [fetchedAnswers, fetchedQuestions] = await Promise.all([
       professorService.getAnswers(),
-      professorService.loadQuestions({ groupIds: '', topicId: '' })
+      professorService.loadQuestions({ groupIds: '', topicId: '' }),
     ]);
     
     if (fetchedAnswers && fetchedAnswers.length > 0) {
       answers.value = fetchedAnswers;
+
+      fetchedAnswers.forEach(a => {
+        if (!groupsIds.value.includes(a.groupId)) {
+          groupsIds.value.push(a.groupId);
+        }
+      });
     }
     if (fetchedQuestions && fetchedQuestions.length > 0) {
       questions.value = fetchedQuestions;
@@ -68,42 +63,16 @@ const loadData = async () => {
   }
 };
 
-const getQuestionData = (questionId: string) => {
-  const questionAnswers = answers.value.filter(a => a.questionId === questionId);
-  const correct = questionAnswers.filter(a => a.status === 'correct').length;
-  const incorrect = questionAnswers.filter(a => a.status === 'incorrect').length;
-  const invalid = questionAnswers.filter(a => a.status === 'invalid').length;
-
-  return {
-    labels: ['Ճիշտ', 'Սխալ', 'Անվավեր'],
-    datasets: [{
-      data: [correct, incorrect, invalid],
-      backgroundColor: ['#4CAF50', '#F44336', '#FF9800']
-    }]
-  };
-};
-
-const getCorrectCount = (questionId: string) => {
-  return answers.value.filter(a => a.questionId === questionId && a.status === 'correct').length;
-};
-
-const getIncorrectCount = (questionId: string) => {
-  return answers.value.filter(a => a.questionId === questionId && a.status === 'incorrect').length;
-};
-
-const getInvalidCount = (questionId: string) => {
-  return answers.value.filter(a => a.questionId === questionId && a.status === 'invalid').length;
+const handleClose = () => {
+  console.log('close');
+  selectedGroupId.value = '';
 };
 
 onMounted(() => {
   loadData();
-  console.log(answers.value);
-  console.log(questions.value);
-  socketService.on('new-answer', loadData);
-});
-
-onUnmounted(() => {
-  socketService.off('new-answer', loadData);
+  professorService.onStudentAnswer((answer: StudentAnswer) => {
+    answers.value.push(answer);
+  });
 });
 </script>
 
@@ -113,67 +82,41 @@ onUnmounted(() => {
   padding: 20px;
 }
 
-.question-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 20px;
-}
-
-.question-card {
-  background: white;
+.group-selector {
+  margin-bottom: 30px;
   padding: 20px;
+  background: white;
   border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.question-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 15px;
-}
-
-.question-header h4 {
-  margin: 0;
-  color: #333;
-  font-size: 16px;
-}
-
-.points {
+.group-selector h3 {
   color: #225dca;
-  font-weight: bold;
-}
-
-.question-chart {
-  height: 150px;
   margin-bottom: 15px;
 }
 
-.question-stats {
+.group-buttons {
   display: flex;
-  justify-content: space-around;
   gap: 10px;
+  flex-wrap: wrap;
 }
 
-.stat {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+.group-buttons button {
+  padding: 8px 16px;
+  border: 1px solid #225dca;
+  border-radius: 4px;
+  background: white;
+  color: #225dca;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
 }
 
-.stat .label {
-  font-size: 12px;
-  color: #666;
+.group-buttons button:hover {
+  background: #f0f7ff;
 }
 
-.stat .value {
-  font-size: 16px;
-  font-weight: bold;
-  color: #333;
+.group-buttons button.active {
+  background: #225dca;
+  color: white;
 }
-
-:deep(.chartjs-render-monitor) {
-  width: 100% !important;
-  height: 100% !important;
-}
-</style> 
+</style>

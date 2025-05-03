@@ -55,12 +55,21 @@ class StudentService {
     return apiService.getGroups(yearId);
   }
 
-  async submitAnswer(answer: StudentAnswer): Promise<void> {
+  async getAnswers(): Promise<StudentAnswer[]> {
+    try {
+      return await apiService.getAllAnswers();
+    } catch (error) {
+      console.error('Error fetching answers:', error);
+      return [];
+    }
+  }
+
+  async submitAnswer(answer: StudentAnswer): Promise<StudentAnswer> {
     console.log('Submitting answer via socket:', answer);
     return new Promise((resolve, reject) => {
-      socketService.emit('submit-answer', answer, (response: { success: boolean; error?: string }) => {
-        if (response.success) {
-          resolve();
+      socketService.emit('submit-answer', answer, (response: { success: boolean; answer?: StudentAnswer; error?: string }) => {
+        if (response.success && response.answer) {
+          resolve(response.answer);
         } else {
           reject(new Error(response.error || 'Failed to submit answer'));
         }
