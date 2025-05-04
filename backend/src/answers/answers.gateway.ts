@@ -66,11 +66,11 @@ export class AnswersGateway implements OnGatewayConnection, OnGatewayDisconnect 
     try {
       const newAnswer = await this.answersService.submitAnswer(answer);
       console.log('Answer submitted successfully:', newAnswer);
-      
-      // Emit to all professors
+    
+    // Emit to all professors
       console.log('Emitting new-answer event to all professors');
-      this.server.emit('new-answer', newAnswer);
-      
+    this.server.emit('new-answer', newAnswer);
+    
       return { success: true, answer: newAnswer };
     } catch (error) {
       console.error('Error submitting answer:', error);

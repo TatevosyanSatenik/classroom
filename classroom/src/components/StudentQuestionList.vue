@@ -206,7 +206,7 @@ onUnmounted(() => {
         <div class="questions-summary">
           <div v-for="question in questions" :key="question.id" class="question-summary">
             <div class="question-content">
-              <h3>{{ question.content }}</h3>
+          <h3>{{ question.content }}</h3>
               <div class="answer-status" :class="getAnswerStatus(question.id)">
                 {{ getAnswerStatusText(question.id) }}
               </div>
@@ -223,7 +223,7 @@ onUnmounted(() => {
           <div class="stat">
             <span class="label">Ճիշտ պատասխաններ</span>
             <span class="value">{{ correctAnswersCount }}</span>
-          </div>
+            </div>
           <div class="stat">
             <span class="label">Ընդհանուր միավորներ</span>
             <span class="value">{{ totalScore }}</span>

@@ -32,7 +32,7 @@ class ProfessorService {
 
   async loadGroups(yearId: string): Promise<Group[]> {
     return apiService.getGroups(yearId);
-  }
+    }
 
   async getAnswers(questionId?: string): Promise<StudentAnswer[]> {
     try {
@@ -65,7 +65,7 @@ class ProfessorService {
 
   offStudentAnswer(callback: (answer: StudentAnswer) => void): void {
     socketService.off('new-answer', callback);
-  }
+    }
 
   cleanup(): void {
     socketService.off('new-answer', () => {});
